@@ -1,4 +1,4 @@
-sleif.nextcloud_docker
+sleif.nextcloud_container
 ============
 
 This role runs a nextcloud instance on docker.
@@ -31,7 +31,7 @@ Example Playbook
       roles:
         - { role: sleif.redis_docker, tags: "redis_docker" }
         - { role: sleif.mariadb_docker, tags: "mariadb_docker" }
-        - { role: sleif.nextcloud_docker, tags: "nextcloud_docker",
+        - { role: sleif.nextcloud_container, tags: "nextcloud_container",
                                                       NEXTCLOUD_VERSION: "21",
                                                       MYSQL_USER: "mysql_db_user",
                                                       MYSQL_PASSWORD: "mysql_db_user_password",

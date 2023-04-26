@@ -5,25 +5,28 @@ container_storage_dir_base: '/srv'
 # TODO: what if nginx is not on the same host?
 nginx_storage_dir_base: '/srv'
 
-VIRTUAL_HOST: "cloud.example.com,cloud2.example.com"
-LETSENCRYPT_EMAIL: "letsencrypt@example.com"
+virtual_host: "cloud.example.com,cloud2.example.com"
+letsencrypt_email: "letsencrypt@example.com"
 
 # prerequisites redis and Mariadb
-REDIS_CONTAINER_NAME: redis
-MYSQL_CONTAINER_NAME: "mariadb"
-MYSQL_USER: "mysql_db_user"
-MYSQL_PASSWORD: "mysql_db_user_password"
-MYSQL_DATABASE: "mariadb_custom_database"
+redis_container_name: redis
+mariadb_container_name: "mariadb"
+mariadb_user: "mysql_db_user"
+mariadb_password: "mysql_db_user_password"
+mariadb_database: "mariadb_custom_database"
 
-NEXTCLOUD_VERSION: 'stable'
-DOCKER_NETWORK_NAME: custom-bridge
-DOCKER_NETWORK_SUBNET: '172.18.0.0/16'
+nextcloud_version: 'stable'
+docker_network_name: custom-bridge
+docker_network_subnet: '172.18.0.0/16'
 
 # nexcloud container environment:
-NEXTCLOUD_ADMIN_USER: "admin"
-NEXTCLOUD_ADMIN_PASSWORD: "password"
-NEXTCLOUD_TRUSTED_DOMAINS: "127.0.0.1"
-NEXTCLOUD_TABLE_PREFIX: "oc_"
+nextcloud_admin_user: "admin"
+nextcloud_admin_password: "password"
+nextcloud_trusted_domains: "127.0.0.1"
+nextcloud_table_prefix: "oc_"
+
+nextcloud_php_memory_limit: 1024M
+nextcloud_php_upload_limit: 1024M
 
 nextcloud_apps_enabled_default:
   - calendar
@@ -48,26 +51,26 @@ nginx_vhosts_defaults: [
   {name: "location ^~ /.well-known", value: "{return 301 /index.php$uri;}"}]
 
 # nexcloud config.php smtp parameters
-MAIL_SMTPHOST: ''
-MAIL_SMTPPORT: '25'
-MAIL_SMTPAUTHTYPE: 'LOGIN'
-# MAIL_SMTPAUTHTYPE: 'PLAIN'
-MAIL_FROM_ADDRESS: 'nextcloud-noreplay'
-MAIL_DOMAIN: ''
-MAIL_SMTPNAME: ''
-MAIL_SMTPPASSWORD: ''
-MAIL_SMTPSECURE: ''
-# MAIL_SMTPSECURE: '' # tls, ssl
-MAIL_SMTPAUTH: 'false'
+mail_smtphost: ''
+mail_smtpport: '25'
+mail_smtpauthtype: 'LOGIN'
+# mail_smtpauthtype: 'PLAIN'
+mail_from_address: 'nextcloud-noreplay'
+mail_domain: ''
+mail_smtpname: ''
+mail_smtppassword: ''
+mail_smtpsecure: ''
+# mail_smtpsecure: '' # tls, ssl
+mail_smtpauth: 'false'
 
 # nextcloud config.php ldap parameters (optional)
-LDAP_HOST: '127.0.0.1'
-LDAP_PROTOCOL: 'ldap'
-LDAP_BASE_DN: ''
-# LDAP_BASE_DN: "dc=example,dc=com"
-LDAP_ADMIN_PASSWORD: ''
+ldap_host: '127.0.0.1'
+ldap_protocol: 'ldap'
+ldap_base_dn: ''
+# ldap_base_dn: "dc=example,dc=com"
+ldap_admin_password: ''
 
-LDAP_AUTH:
-  server_uri: "{{ LDAP_PROTOCOL }}://{{ LDAP_HOST }}"
-  bind_dn: "cn=admin,{{ LDAP_BASE_DN }}"
-  bind_pw: "{{ LDAP_ADMIN_PASSWORD }}"
+ldap_auth:
+  server_uri: "{{ ldap_protocol }}://{{ ldap_host }}"
+  bind_dn: "cn=admin,{{ ldap_base_dn }}"
+  bind_pw: "{{ ldap_admin_password }}"

@@ -1,19 +1,47 @@
 ---
 
-- name: Nextcloud | merge container env | letsencrypt
+- name: Gather info about possibly existing pod for nextcloud
+  containers.podman.podman_pod_info:
+    name: "{{ pod_name }}"
+  register: _pod_info
+  when:
+    - pod_name is defined
+    - pod_name | length > 0
+
+- name: Create the pod if not already exists
+  containers.podman.podman_pod:
+    name: "{{ pod_name }}"
+    publish: "{{ pod_published_ports | default(omit) }}"
+  register: _pod_info
+  when:
+    - pod_name is defined
+    - pod_name | length > 0
+    - _pod_info.pods | length == 0
+
+- name: Gather info about specific network
+  containers.podman.podman_network_info:
+    name: "podman"
+  register: _podman_network_info
+  when:
+    - pod_name is defined
+    - pod_name | length > 0
+
+# - debug: var=_podman_network_info
+# - debug: var=_podman_network_info.networks[0].subnets[0].subnet
+
+- name: merge container env | letsencrypt
+  ansible.builtin.set_fact:
+    podman_network_subnet: "{{ _podman_network_info.networks[0].subnets[0].subnet }}"
+
+- name: merge container env | letsencrypt
   ansible.builtin.set_fact:
     nextcloud_container_env_options: "{{ nextcloud_container_env_options | default({}) | combine(nextcloud_container_env.letsencrypt) }}"
   when: nextcloud_container_env.letsencrypt.VIRTUAL_HOST
 
 # - ansible.builtin.debug:
 #     msg: "{{ nextcloud_container_env.main | combine( nextcloud_container_env_options | default({}) ) }}"
-
-# - name: Nextcloud | install default and custom apps
-#   ansible.builtin.debug:
-#     msg: "{{ item }}"
-#   loop: "{{ [nextcloud_apps_enabled_default + nextcloud_apps_enabled_custom] | flatten | unique }}"
-#   ignore_errors: true
 # - pause:
+
 - name: Additional nginx proxy configuration from nginx_vhosts_defaults
   ansible.builtin.lineinfile:
     path: "{{ nginx_storage_dir_base }}/nginx/vhost.d/{{ item.1 }}"
@@ -36,33 +64,40 @@
     regexp: "^{{ item.0.name }}.*"
     mode: "0644"
   with_nested:
-    - [
-        {name: "set_real_ip_from", value: "{{ DOCKER_NETWORK_SUBNET }}"}, ]
+    - [{name: "set_real_ip_from", value: "{{ podman_network_subnet }}"}]
     - "{{ nextcloud_container_env.letsencrypt.VIRTUAL_HOST.split(',') }}"
   when: nextcloud_container_env.letsencrypt.VIRTUAL_HOST
   tags:
     - nginx_vhosts_defaults
 
-- name: Nextcloud | update Nextcloud apps before a possible update of the container
+- name: Update Nextcloud apps before a possible update of the container
   ansible.builtin.include_tasks:
     file: nextcloud_update_apps.yml
 
-- name: Nextcloud-Container starten
-  community.general.docker_container:
+- name: "create persistant nextcloud data directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0750'
+  loop:
+    - "{{ container_storage_dir_base }}/nextcloud/nextcloud"
+    - "{{ container_storage_dir_base }}/nextcloud/nextcloud_config"
+    - "{{ container_storage_dir_base }}/nextcloud/nextcloud_custom_apps"
+    - "{{ container_storage_dir_base }}/nextcloud/nextcloud_data"
+    - "{{ container_storage_dir_base }}/nextcloud/nextcloud_themes"
+
+# https://store.docker.com/images/nextcloud
+- name: Start Nextcloud container
+  containers.podman.podman_container:
     name: nextcloud
-    image: "nextcloud:{{ NEXTCLOUD_VERSION }}"
-    networks:
-      - name: "{{ DOCKER_NETWORK_NAME }}"
-        aliases:
-          - nextcloud-container
-    networks_cli_compatible: true
+    image: "docker.io/nextcloud:{{ nextcloud_version }}"
+    pod: "{{ pod_name | default(omit) }}"
     state: started
     restart_policy: always
     recreate: true
     # restart: true
-    pull: true
-    ports: "{{ nextcloud_external_ports }}"
-    volumes:
+    # pull: true
+    volume:
       - "{{ container_storage_dir_base }}/nextcloud/nextcloud:/var/www/html:Z"
       - "{{ container_storage_dir_base }}/nextcloud/nextcloud_config:/var/www/html/config:Z"
       - "{{ container_storage_dir_base }}/nextcloud/nextcloud_custom_apps:/var/www/html/custom_apps:Z"
@@ -70,18 +105,29 @@
       - "{{ container_storage_dir_base }}/nextcloud/nextcloud_themes:/var/www/html/themes:Z"
     env: "{{ nextcloud_container_env.main | combine(nextcloud_container_env_options | default({})) }}"
     tmpfs:
-      - /tmp
-  register: _nextcloud
+      "/tmp": "rw,mode=1777"
+      # "/tmp": "rw,size=787448k,mode=1777"
+    generate_systemd:
+      path: /etc/systemd/system/
+      restart_policy: always
+  register: _container_start_results
+# - debug: var=_container_start_results
 
-- name: Nextcloud | register container IP
+- name: "enable systemd service"
+  ansible.builtin.service:
+    name: "{{ (_container_start_results.podman_systemd | dict2items | list | first).key }}"
+    enabled: true
+
+# - debug: var=_container_start_results
+
+- name: Register container IP
   ansible.builtin.set_fact:
-    _container_ip: "{{ _nextcloud.container.NetworkSettings.Networks[DOCKER_NETWORK_NAME].IPAddress }}"
+    _container_ip: "{{ _container_start_results.container.NetworkSettings.Networks.podman.IPAddress }}"
+# - debug: var=_container_ip
 
 - name: Nextcloud | wait for nextcloud service comes up
   ansible.builtin.uri:
     url: "http://{{ _container_ip }}/"
-    # url: "https://{{ nextcloud_container_env.letsencrypt.VIRTUAL_HOST.split(',')[0] }}/"
-    # status_code: 200
     status_code: [200, 400]
     validate_certs: false
   register: result
@@ -91,7 +137,7 @@
 
 - name: Nextcloud | get enabled and disabled apps
   ansible.builtin.shell:
-    docker exec --user www-data nextcloud php occ app:list --shipped=false --output=json | grep "{"
+    set -o pipefail && podman exec --user www-data nextcloud php occ app:list --shipped=false --output=json | grep "{"
   register: nextcloud_app_list_result
   changed_when: false
 
@@ -101,48 +147,49 @@
 
 - name: Nextcloud | install default and custom apps
   ansible.builtin.command:
-    docker exec --user www-data nextcloud php occ app:install {{ item }}
+    podman exec --user www-data nextcloud php occ app:install {{ item }}
   loop: "{{ [nextcloud_apps_enabled_default + nextcloud_apps_enabled_custom] | flatten | unique }}"
   when:
     - item not in nextcloud_app_list.enabled
     - item not in nextcloud_app_list.disabled
-  ignore_errors: true
+  # ignore_errors: true
+  failed_when: false
 
 - name: Nextcloud | enable default and custom apps
   ansible.builtin.command:
-    docker exec --user www-data nextcloud php occ app:enable {{ item }}
+    podman exec --user www-data nextcloud php occ app:enable {{ item }}
   loop: "{{ [nextcloud_apps_enabled_default + nextcloud_apps_enabled_custom] | flatten | unique }}"
   when: item not in nextcloud_app_list.enabled
 
 - name: Nextcloud | remove apps not wanted
   ansible.builtin.command:
-    docker exec --user www-data nextcloud php occ app:disable {{ item }}
+    podman exec --user www-data nextcloud php occ app:disable {{ item }}
   loop: "{{ nextcloud_apps_disabled }}"
   when: item in nextcloud_app_list.enabled
 
 # https://www.jeffgeerling.com/blog/2017/changing-deeply-nested-dict-variable-ansible-playbook
 - name: Nextcloud | merge nextcloud_config | system
   ansible.builtin.set_fact:
-    nextcloud_config: "{{ nextcloud_config |  default({}) | combine ({'system': nextcloud_config_system.system }, recursive=True)  }}"
+    nextcloud_config: "{{ nextcloud_config |  default({}) | combine ({'system': nextcloud_config_system.system }, recursive=true)  }}"
 
 - name: Nextcloud | merge nextcloud_config | system mail
   ansible.builtin.set_fact:
-    nextcloud_config: "{{ nextcloud_config |  default({}) | combine ({'system': nextcloud_config_system_smtp.system }, recursive=True)  }}"
+    nextcloud_config: "{{ nextcloud_config |  default({}) | combine ({'system': nextcloud_config_system_smtp.system }, recursive=true)  }}"
   when: nextcloud_config_system_smtp.system.mail_smtphost
 
 - name: Nextcloud | merge nextcloud_config | apps preview
   ansible.builtin.set_fact:
-    nextcloud_config: "{{ nextcloud_config |  default({}) | combine ({'apps': {'preview': nextcloud_config_apps_preview.apps.preview }}, recursive=True)  }}"
+    nextcloud_config: "{{ nextcloud_config |  default({}) | combine ({'apps': {'preview': nextcloud_config_apps_preview.apps.preview }}, recursive=true)  }}"
 
 - name: Nextcloud | merge nextcloud_config | apps previewgenerator
   ansible.builtin.set_fact:
     nextcloud_config: "{{ nextcloud_config |  default({}) |
-                      combine ({'apps': {'previewgenerator': nextcloud_config_apps_previewgenerator.apps.previewgenerator }}, recursive=True)  }}"
+                      combine ({'apps': {'previewgenerator': nextcloud_config_apps_previewgenerator.apps.previewgenerator }}, recursive=true)  }}"
 
 - name: Nextcloud | merge nextcloud_config | apps user_ldap
   ansible.builtin.set_fact:
     nextcloud_config: "{{ nextcloud_config |  default({}) |
-                       combine ({'apps': {'user_ldap': nextcloud_config_apps_user_ldap.apps.user_ldap }}, recursive=True)  }}"
+                      combine ({'apps': {'user_ldap': nextcloud_config_apps_user_ldap.apps.user_ldap }}, recursive=true)  }}"
   when: nextcloud_config_apps_user_ldap.apps.user_ldap.s01ldap_base
 
 - name: Nextcloud | write temporary config file /var/www/html/config/nextcloud_config_file_for_import
@@ -156,7 +203,7 @@
 
 - name: Nextcloud | apply temporary config file /var/www/html/config/nextcloud_config_file_for_import
   ansible.builtin.command:
-    docker exec --user www-data nextcloud php occ config:import /var/www/html/config/nextcloud_config_file_for_import
+    podman exec --user www-data nextcloud php occ config:import /var/www/html/config/nextcloud_config_file_for_import
   register: result
   changed_when: result is success
 
@@ -169,7 +216,7 @@
   ansible.builtin.cron:
     name: Nextcloud cronjob
     minute: "*/5"
-    job: "docker exec --user www-data nextcloud php /var/www/html/cron.php"
+    job: "podman exec --user www-data nextcloud php /var/www/html/cron.php"
   tags:
     - cronjob
 
@@ -177,4 +224,4 @@
   ansible.builtin.debug:
     msg:
       - "on host {{ ansible_host }} run the following command as root user"
-      - "docker exec --user www-data nextcloud php occ db:convert-filecache-bigint --no-interaction"
+      - "podman exec --user www-data nextcloud php occ db:convert-filecache-bigint --no-interaction"

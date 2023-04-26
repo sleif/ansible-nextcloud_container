@@ -1,19 +1,20 @@
 ---
 - name: nextcloud | check for app updates
   ansible.builtin.command:
-    docker exec --user www-data nextcloud php occ app:update --showonly
+    podman exec --user www-data nextcloud php occ app:update --showonly
   register: nextcloud_app_updates
   changed_when: false
   ignore_errors: true
 
-- ansible.builtin.debug:
+- name: nextcloud | list app updates
+  ansible.builtin.debug:
     var: nextcloud_app_updates.stdout_lines
   when:
     - not nextcloud_app_updates.failed
 
 - name: nextcloud | apply app updates
   ansible.builtin.command:
-    docker exec --user www-data nextcloud php occ app:update --all
+    podman exec --user www-data nextcloud php occ app:update --all
   when:
     - not nextcloud_app_updates.failed
     - nextcloud_app_updates.stdout_lines | length > 0

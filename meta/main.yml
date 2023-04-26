@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  role_name: nextcloud_docker
+  role_name: nextcloud_container
   author: Sebastian Berthold
   description: starts a nextcloud instance on docker
   #company: your company (optional)

@@ -3,19 +3,22 @@
 # nextcloud container environment
 nextcloud_container_env:
   main:
-    NEXTCLOUD_ADMIN_USER: "{{ NEXTCLOUD_ADMIN_USER }}"
-    NEXTCLOUD_ADMIN_PASSWORD: "{{ NEXTCLOUD_ADMIN_PASSWORD }}"
-    NEXTCLOUD_TRUSTED_DOMAINS:  "{{ NEXTCLOUD_TRUSTED_DOMAINS }}"
-    NEXTCLOUD_TABLE_PREFIX: "{{ NEXTCLOUD_TABLE_PREFIX }}"
-    REDIS_HOST: "{{ REDIS_CONTAINER_NAME }}"
-    MYSQL_HOST: "{{ MYSQL_CONTAINER_NAME }}"
-    MYSQL_DATABASE: "{{ MYSQL_DATABASE | default('') }}"
-    MYSQL_USER: "{{ MYSQL_USER }}"
-    MYSQL_PASSWORD: "{{ MYSQL_PASSWORD }}"
+    NEXTCLOUD_ADMIN_USER: "{{ nextcloud_admin_user }}"
+    NEXTCLOUD_ADMIN_PASSWORD: "{{ nextcloud_admin_password }}"
+    NEXTCLOUD_TRUSTED_DOMAINS: "{{ nextcloud_trusted_domains }}"
+    NEXTCLOUD_TABLE_PREFIX: "{{ nextcloud_table_prefix }}"
+    REDIS_HOST: "{{ redis_container_name }}"
+    MYSQL_HOST: "{{ mariadb_container_name }}"
+    MYSQL_DATABASE: "{{ mariadb_database | default('') }}"
+    MYSQL_USER: "{{ mariadb_user }}"
+    MYSQL_PASSWORD: "{{ mariadb_password }}"
+    PHP_MEMORY_LIMIT: "{{ nextcloud_php_memory_limit }}"
+    PHP_UPLOAD_LIMIT: "{{ nextcloud_php_upload_limit }}"
+    TRUSTED_PROXIES: "{{ podman_network_subnet }}"
   letsencrypt:
-    VIRTUAL_HOST: "{{ VIRTUAL_HOST | default('') }}"
-    LETSENCRYPT_HOST: "{{ VIRTUAL_HOST | default('') }}"
-    LETSENCRYPT_EMAIL: "{{ LETSENCRYPT_EMAIL }}"
+    VIRTUAL_HOST: "{{ virtual_host | default('') }}"
+    LETSENCRYPT_HOST: "{{ virtual_host | default('') }}"
+    LETSENCRYPT_EMAIL: "{{ letsencrypt_email }}"
 
 # nexcloud config.php common parameters
 nextcloud_config_system:
@@ -30,16 +33,16 @@ nextcloud_config_system:
 nextcloud_config_system_smtp:
   system:
     mail_smtpmode: "smtp"
-    mail_smtphost: "{{ MAIL_SMTPHOST | default('') }}"
-    mail_smtpport: "{{ MAIL_SMTPPORT | default('25') }}"
-    mail_from_address: "{{ MAIL_FROM_ADDRESS | default('nextcloud-noreplay') }}"
-    mail_domain: "{{ MAIL_DOMAIN | default('') }}"
+    mail_smtphost: "{{ mail_smtphost | default('') }}"
+    mail_smtpport: "{{ mail_smtpport | default('25') }}"
+    mail_from_address: "{{ mail_from_address | default('nextcloud-noreplay') }}"
+    mail_domain: "{{ mail_domain | default('') }}"
     mail_sendmailmode: "smtp"
-    mail_smtpsecure: "{{ MAIL_SMTPSECURE | default('') }}"
-    mail_smtpauth: "{{ MAIL_SMTPAUTH | default('False') }}"
-    mail_smtpauthtype: "{{ MAIL_SMTPAUTHTYPE | default('LOGIN') }}"
-    mail_smtpname: "{{ MAIL_SMTPNAME | default('') }}"
-    mail_smtppassword: "{{ MAIL_SMTPPASSWORD | default('') }}"
+    mail_smtpsecure: "{{ mail_smtpsecure | default('') }}"
+    mail_smtpauth: "{{ mail_smtpauth | default('False') }}"
+    mail_smtpauthtype: "{{ mail_smtpauthtype | default('LOGIN') }}"
+    mail_smtpname: "{{ mail_smtpname | default('') }}"
+    mail_smtppassword: "{{ mail_smtppassword | default('') }}"
 
 # nexcloud config.php preview parameters
 nextcloud_config_apps_preview:
@@ -69,20 +72,20 @@ nextcloud_config_apps_user_ldap:
       # s01has_memberof_filter_support: 1
       # s01home_folder_naming_rule:
       s01last_jpegPhoto_lookup: 0
-      #s01ldap_agent_password: "{{ NEXTCLOUD_LDAP_ADMIN_PASSWORD }}"
+      # s01ldap_agent_password: "{{ nextcloud_ldap_admin_password }}"
       # s01ldap_attributes_for_group_search:
       # s01ldap_attributes_for_user_search:
       # s01ldap_backup_host:
       # s01ldap_backup_port:
-      s01ldap_base: "{{ LDAP_BASE_DN }}"
-      s01ldap_base_groups: "{{ LDAP_BASE_DN }}"
-      s01ldap_base_users: "{{ LDAP_BASE_DN }}"
+      s01ldap_base: "{{ ldap_base_dn }}"
+      s01ldap_base_groups: "{{ ldap_base_dn }}"
+      s01ldap_base_users: "{{ ldap_base_dn }}"
       s01ldap_cache_ttl: "600"
       s01ldap_configuration_active: "1"
       s01ldap_display_name: 'displayname'
-      s01ldap_dn: "{{ LDAP_AUTH.bind_dn }}"
-      s01ldap_agent_password: "{{ LDAP_AUTH.bind_pw }}"
-      s01ldap_host: "{{ LDAP_AUTH.server_uri }}"
+      s01ldap_dn: "{{ ldap_auth.bind_dn }}"
+      s01ldap_agent_password: "{{ ldap_auth.bind_pw }}"
+      s01ldap_host: "{{ ldap_auth.server_uri }}"
       s01ldap_email_attr: 'mail'
       s01ldap_experienced_admin: "0"
       s01ldap_expert_username_attr: 'uid'
@@ -96,7 +99,8 @@ nextcloud_config_apps_user_ldap:
       s01ldap_group_member_assoc_attribute: 'gidNumber'
       # s01ldap_groupfilter_groups:
       s01ldap_groupfilter_objectclass: 'posixGroup'
-      s01ldap_login_filter: "(&(&(|(objectclass=inetOrgPerson))(|(memberof=cn=nextcloud,ou=groupofuniquenames,{{ LDAP_BASE_DN }})))(|(mailPrimaryAddress=%uid)(mail=%uid)(uid=%uid)(entryUUID=%uid)))"
+      s01ldap_login_filter: "(&(&(|(objectclass=inetOrgPerson))(|(memberof=cn=nextcloud,ou=groupofuniquenames,{{
+        ldap_base_dn }})))(|(mailPrimaryAddress=%uid)(mail=%uid)(uid=%uid)(entryUUID=%uid)))"
       s01ldap_login_filter_mode: "1"
       # s01ldap_loginfilter_attributes:
       s01ldap_loginfilter_email: "1"
@@ -115,6 +119,6 @@ nextcloud_config_apps_user_ldap:
       s01ldap_user_filter_mode: "0"
       s01ldap_userfilter_groups: 'nextcloud'
       s01ldap_userfilter_objectclass: 'inetOrgPerson'
-      s01ldap_userlist_filter: "(&(|(objectclass=inetOrgPerson))(|(memberof=cn=nextcloud,ou=groupofuniquenames,{{ LDAP_BASE_DN }})))"
+      s01ldap_userlist_filter: "(&(|(objectclass=inetOrgPerson))(|(memberof=cn=nextcloud,ou=groupofuniquenames,{{ ldap_base_dn }})))"
       s01use_memberof_to_detect_membership: "1"
       types: 'authentication'
