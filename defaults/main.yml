@@ -9,8 +9,8 @@ virtual_host: "cloud.example.com,cloud2.example.com"
 letsencrypt_email: "letsencrypt@example.com"
 
 # prerequisites redis and Mariadb
-redis_container_name: redis
-mariadb_container_name: "mariadb"
+redis_container_name: redis_for_nextcloud
+mariadb_container_name: "mariadb_for_nextcloud"
 mariadb_user: "mysql_db_user"
 mariadb_password: "mysql_db_user_password"
 mariadb_database: "mariadb_custom_database"
