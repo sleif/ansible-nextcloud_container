@@ -233,6 +233,10 @@
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) | combine({'system': nextcloud_config_system.system}, recursive=true) }}"
 
+    - name: merge nextcloud_config | system memory caching
+      ansible.builtin.set_fact:
+        nextcloud_config: "{{ nextcloud_config | default({}) | combine({'system': nextcloud_config_system_memory_caching.system}, recursive=true) }}"
+
     - name: merge nextcloud_config | system mail
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) | combine({'system': nextcloud_config_system_smtp.system}, recursive=true) }}"
