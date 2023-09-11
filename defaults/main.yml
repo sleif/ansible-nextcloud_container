@@ -1,7 +1,7 @@
 ---
 
 container_storage_dir_base: '/srv'
-
+nextcloud_container_exposed_port: '80'
 # TODO: what if nginx is not on the same host?
 nginx_storage_dir_base: '/srv'
 
@@ -70,7 +70,7 @@ ldap_base_dn: ''
 # ldap_base_dn: "dc=example,dc=com"
 ldap_admin_password: ''
 
-ldap_auth:
+ldap_auth_admin:
   server_uri: "{{ ldap_protocol }}://{{ ldap_host }}"
   bind_dn: "cn=admin,{{ ldap_base_dn }}"
   bind_pw: "{{ ldap_admin_password }}"

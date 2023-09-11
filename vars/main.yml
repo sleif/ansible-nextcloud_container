@@ -4,17 +4,18 @@
 nextcloud_container_env:
   main:
     NEXTCLOUD_ADMIN_USER: "{{ nextcloud_admin_user }}"
-    NEXTCLOUD_ADMIN_PASSWORD: "{{ nextcloud_admin_password }}"
+    NEXTCLOUD_ADMIN_PASSWORD_FILE: "/run/secrets/nextcloud_admin_password"
+    # NEXTCLOUD_ADMIN_PASSWORD: "{{ nextcloud_admin_password }}"
     NEXTCLOUD_TRUSTED_DOMAINS: "{{ nextcloud_trusted_domains }}"
     NEXTCLOUD_TABLE_PREFIX: "{{ nextcloud_table_prefix }}"
     REDIS_HOST: "{{ redis_container_name }}"
     MYSQL_HOST: "{{ mariadb_container_name }}"
     MYSQL_DATABASE: "{{ mariadb_database | default('') }}"
     MYSQL_USER: "{{ mariadb_user }}"
-    MYSQL_PASSWORD: "{{ mariadb_password }}"
+    MYSQL_PASSWORD: "/run/secrets/mariadb_password"
     PHP_MEMORY_LIMIT: "{{ nextcloud_php_memory_limit }}"
     PHP_UPLOAD_LIMIT: "{{ nextcloud_php_upload_limit }}"
-    TRUSTED_PROXIES: "{{ podman_network_subnet }}"
+    TRUSTED_PROXIES: "{{ _podman_network_subnet }}"
   letsencrypt:
     VIRTUAL_HOST: "{{ virtual_host | default('') }}"
     LETSENCRYPT_HOST: "{{ virtual_host | default('') }}"
@@ -28,6 +29,13 @@ nextcloud_config_system:
     preview_max_y: "2048"
     jpeg_quality: "60"
     default_phone_region: "DE"
+
+# nexcloud config.php smtp parameters
+nextcloud_config_system_memory_caching:
+  system:
+    memcache.local: '\OC\Memcache\APCu'
+    memcache.distributed: '\OC\Memcache\Redis'
+    memcache.locking: '\OC\Memcache\Redis'
 
 # nexcloud config.php smtp parameters
 nextcloud_config_system_smtp:
@@ -83,9 +91,9 @@ nextcloud_config_apps_user_ldap:
       s01ldap_cache_ttl: "600"
       s01ldap_configuration_active: "1"
       s01ldap_display_name: 'displayname'
-      s01ldap_dn: "{{ ldap_auth.bind_dn }}"
-      s01ldap_agent_password: "{{ ldap_auth.bind_pw }}"
-      s01ldap_host: "{{ ldap_auth.server_uri }}"
+      s01ldap_dn: "{{ ldap_auth_admin.bind_dn }}"
+      s01ldap_agent_password: "{{ ldap_auth_admin.bind_pw }}"
+      s01ldap_host: "{{ ldap_auth_admin.server_uri }}"
       s01ldap_email_attr: 'mail'
       s01ldap_experienced_admin: "0"
       s01ldap_expert_username_attr: 'uid'

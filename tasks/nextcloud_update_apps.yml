@@ -1,20 +1,28 @@
 ---
-- name: nextcloud | check for app updates
-  ansible.builtin.command:
-    podman exec --user www-data nextcloud php occ app:update --showonly
-  register: nextcloud_app_updates
-  changed_when: false
-  ignore_errors: true
 
-- name: nextcloud | list app updates
-  ansible.builtin.debug:
-    var: nextcloud_app_updates.stdout_lines
-  when:
-    - not nextcloud_app_updates.failed
+- name: nextcloud_update_apps | block
+  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+  become: "{{ podman_rootless | bool }}"
+  tags: nextcloud_update_apps
+  block:
+    - name: nextcloud_update_apps | check for app updates
+      ansible.builtin.command:
+        podman exec --user www-data {{ container_name }} php occ app:update --showonly
+      register: _nextcloud_app_updates
+      changed_when: _nextcloud_app_updates.rc != 0
+      ignore_errors: true
 
-- name: nextcloud | apply app updates
-  ansible.builtin.command:
-    podman exec --user www-data nextcloud php occ app:update --all
-  when:
-    - not nextcloud_app_updates.failed
-    - nextcloud_app_updates.stdout_lines | length > 0
+    - name: nextcloud_update_apps | list app updates
+      ansible.builtin.debug:
+        var: _nextcloud_app_updates.stdout_lines
+      when:
+        - not _nextcloud_app_updates.failed
+
+    - name: nextcloud_update_apps | apply app updates
+      ansible.builtin.command:
+        podman exec --user www-data {{ container_name }} php occ app:update --all
+      register: _result
+      changed_when: _result.rc != 0
+      when:
+        - not _nextcloud_app_updates.failed
+        - _nextcloud_app_updates.stdout_lines | length > 0
