@@ -183,7 +183,7 @@
     #   delay: 10
 
     - name: wait for nextcloud service comes up
-      ansible.builtin.command: podman exec -t nextcloud busybox wget -O - localhost
+      ansible.builtin.command: podman exec -t nextcloud busybox wget -O - http://localhost/login
       register: _result
       until: _result.rc == 0
       changed_when: _result.rc != 0
@@ -250,6 +250,7 @@
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) |
                             combine({'apps': {'previewgenerator': nextcloud_config_apps_previewgenerator.apps.previewgenerator}}, recursive=true) }}"
+      tags: config_import
 
     - name: merge nextcloud_config | apps user_ldap
       ansible.builtin.set_fact:
@@ -257,25 +258,30 @@
                           combine({'apps': {'user_ldap': nextcloud_config_apps_user_ldap.apps.user_ldap}}, recursive=true) }}"
       when: nextcloud_config_apps_user_ldap.apps.user_ldap.s01ldap_base
 
-    - name: write temporary config file /var/www/html/config/nextcloud_config_file_for_import
+    - name: write temporary config file /dev/shm/nextcloud_config_file_for_import
       ansible.builtin.copy:
         content: "{{ nextcloud_config | to_nice_json(indent=2) }}"
-        dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config/nextcloud_config_file_for_import"
-        owner: "root"
+        dest: "/dev/shm/nextcloud_config_file_for_import"
+        # dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config/nextcloud_config_file_for_import"
         mode: "0444"
-        setype: "container_file_t"
+        # setype: "container_file_t"
       changed_when: false
+      tags: config_import
 
-    - name: apply temporary config file /var/www/html/config/nextcloud_config_file_for_import
-      ansible.builtin.command:
-        podman exec --user www-data {{ container_name }} php occ config:import /var/www/html/config/nextcloud_config_file_for_import
+    - name: apply temporary config file /dev/shm/nextcloud_config_file_for_import
+      ansible.builtin.shell: >
+        set -o pipefail && podman cp /dev/shm/nextcloud_config_file_for_import {{ container_name }}:/dev/shm/nextcloud_config_file_for_import &&
+        podman exec --user www-data {{ container_name }} php occ config:import /dev/shm/nextcloud_config_file_for_import &&
+        podman exec {{ container_name }} rm -f /dev/shm/nextcloud_config_file_for_import
       register: _result
       changed_when: _result is success
+      tags: config_import
 
-    # - name: remove temporary config file /var/www/html/config/nextcloud_config_file_for_import
-    #   ansible.builtin.file:
-    #     path: /var/www/html/config/nextcloud_config_file_for_import
-    #     state: absent
+    - name: remove temporary config file /dev/shm/nextcloud_config_file_for_import
+      ansible.builtin.file:
+        path: /dev/shm/nextcloud_config_file_for_import
+        state: absent
+      changed_when: false
 
     - name: Add Nextcloud cronjob
       ansible.builtin.cron:
