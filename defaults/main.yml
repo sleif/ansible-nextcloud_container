@@ -1,12 +1,14 @@
 ---
 
 container_storage_dir_base: '/srv'
+nextcloud_container_image: "docker.io/nextcloud"
+nextcloud_container_image_tag: 'stable'
 nextcloud_container_exposed_port: '80'
 # TODO: what if nginx is not on the same host?
 nginx_storage_dir_base: '/srv'
 
-virtual_host: "cloud.example.com,cloud2.example.com"
-letsencrypt_email: "letsencrypt@example.com"
+nextcloud_overwritehost: "cloud.example.com"
+nextcloud_overwriteport: "443"
 
 # prerequisites redis and Mariadb
 redis_container_name: redis_for_nextcloud
@@ -15,16 +17,11 @@ mariadb_user: "mysql_db_user"
 mariadb_password: "mysql_db_user_password"
 mariadb_database: "mariadb_custom_database"
 
-nextcloud_version: 'stable'
-docker_network_name: custom-bridge
-docker_network_subnet: '172.18.0.0/16'
-
 # nexcloud container environment:
 nextcloud_admin_user: "admin"
 nextcloud_admin_password: "password"
 nextcloud_trusted_domains: "127.0.0.1"
 nextcloud_table_prefix: "oc_"
-
 nextcloud_php_memory_limit: 1024M
 nextcloud_php_upload_limit: 1024M
 
@@ -35,20 +32,6 @@ nextcloud_apps_enabled_default:
   - tasks
 nextcloud_apps_enabled_custom: []
 nextcloud_apps_disabled: []
-
-nextcloud_external_ports: []
-
-nginx_vhosts_defaults: [
-  {name: "client_max_body_size", value: "0;"},
-  {name: "fastcgi_request_buffering", value: "off;"},
-  {name: "proxy_connect_timeout", value: "604;"},
-  {name: "proxy_send_timeout", value: "603;"},
-  {name: "proxy_read_timeout", value: "603;"},
-  {name: "real_ip_header", value: "X-Forwarded-For;"},
-  {name: "send_timeout", value: "603;"},
-  {name: "location = /.well-known/carddav", value: "{return 301 /remote.php/dav;}"},
-  {name: "location = /.well-known/caldav", value: "{return 301 /remote.php/dav;}"},
-  {name: "location ^~ /.well-known", value: "{return 301 /index.php$uri;}"}]
 
 # nexcloud config.php smtp parameters
 mail_smtphost: ''

@@ -12,19 +12,17 @@ nextcloud_container_env:
     MYSQL_HOST: "{{ mariadb_container_name }}"
     MYSQL_DATABASE: "{{ mariadb_database | default('') }}"
     MYSQL_USER: "{{ mariadb_user }}"
-    MYSQL_PASSWORD: "/run/secrets/mariadb_password"
+    MYSQL_PASSWORD_FILE: "/run/secrets/mariadb_password"
     PHP_MEMORY_LIMIT: "{{ nextcloud_php_memory_limit }}"
     PHP_UPLOAD_LIMIT: "{{ nextcloud_php_upload_limit }}"
     TRUSTED_PROXIES: "{{ _podman_network_subnet }}"
-  letsencrypt:
-    VIRTUAL_HOST: "{{ virtual_host | default('') }}"
-    LETSENCRYPT_HOST: "{{ virtual_host | default('') }}"
-    LETSENCRYPT_EMAIL: "{{ letsencrypt_email }}"
 
 # nexcloud config.php common parameters
 nextcloud_config_system:
   system:
+    overwritehost: "{{ nextcloud_overwritehost }}"
     overwriteprotocol: "https"
+    overwrite.cli.url: "https://{{ nextcloud_overwritehost }}:{{ nextcloud_overwriteport | d('443') }}"
     preview_max_x: "2048"
     preview_max_y: "2048"
     jpeg_quality: "60"

@@ -1,53 +1,14 @@
 ---
 
-- name: Gather info about specific network
-  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
-  become: "{{ podman_rootless | bool }}"
-  containers.podman.podman_network_info:
-    name: "{{ podman_network_name }}"
-  register: _podman_network_info
-
-- name: Merge container env | letsencrypt
-  ansible.builtin.set_fact:
-    _podman_network_subnet: "{{ _podman_network_info.networks[0].subnets[0].subnet }}"
-
-# - name: Merge container env | letsencrypt
+# - name: Gather info about specific network
+#   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+#   become: "{{ podman_rootless | bool }}"
+#   containers.podman.podman_network_info:
+#     name: "{{ podman_network_name }}"
+#   register: _podman_network_info
+# - name: set_fact _podman_network_subnet
 #   ansible.builtin.set_fact:
-#     nextcloud_container_env_options: "{{ nextcloud_container_env_options | default({}) | combine(nextcloud_container_env.letsencrypt) }}"
-#   when: nextcloud_container_env.letsencrypt.VIRTUAL_HOST
-
-# - ansible.builtin.debug:
-#     msg: "{{ nextcloud_container_env.main | combine( nextcloud_container_env_options | default({}) ) }}"
-# - pause:
-
-# - name: Additional nginx proxy configuration from nginx_vhosts_defaults
-#   ansible.builtin.lineinfile:
-#     path: "{{ nginx_storage_dir_base }}/nginx/vhost.d/{{ item.1 }}"
-#     create: true
-#     line: "{{ item.0.name }} {{ item.0.value }}"
-#     regexp: "^{{ item.0.name }}\ .*"
-#     mode: "0644"
-#   with_nested:
-#     - "{{ nginx_vhosts_defaults }}"
-#     - "{{ nextcloud_container_env.letsencrypt.VIRTUAL_HOST.split(',') }}"
-#   when: nextcloud_container_env.letsencrypt.VIRTUAL_HOST
-#   tags:
-#     - nginx_vhosts_defaults
-
-
-# - name: Additional nginx proxy configuration about letsencrypt
-#   ansible.builtin.lineinfile:
-#     path: "{{ nginx_storage_dir_base }}/nginx/vhost.d/{{ item.1 }}"
-#     create: true
-#     line: "{{ item.0.name }} {{ item.0.value }};"
-#     regexp: "^{{ item.0.name }}.*"
-#     mode: "0644"
-#   with_nested:
-#     - [{name: "set_real_ip_from", value: "{{ _podman_network_subnet }}"}]
-#     - "{{ nextcloud_container_env.letsencrypt.VIRTUAL_HOST.split(',') }}"
-#   when: nextcloud_container_env.letsencrypt.VIRTUAL_HOST
-#   tags:
-#     - nginx_vhosts_defaults
+#     _podman_network_subnet: "{{ _podman_network_info.networks[0].subnets[0].subnet }}"
 
 # the next task will return:
 # - _container_storage_dir_base_local
@@ -86,23 +47,15 @@
         - nextcloud_update_apps
   tags: always
 
-- name: Include role sleif.podman podman_operation pod_create
+- name: Include role sleif.podman podman_operation podman_pod_create
   ansible.builtin.include_role:
     name: sleif.podman
     apply:
       tags:
         - podman_pod_create
   vars:
-    podman_operation: pod_create
+    podman_operation: podman_pod_create
   tags: always
-
-- name: Pull container image docker.io/nextcloud
-  become: "{{ podman_rootless | bool }}"
-  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
-  containers.podman.podman_image:
-    name: "docker.io/nextcloud"
-    tag: "{{ nextcloud_version }}"
-    force: true
 
 - name: Create Podman secrets
   become: "{{ podman_rootless | bool }}"
@@ -117,18 +70,26 @@
     - {name: 'mariadb_password', data: '{{ mariadb_password }}'}
   tags: podman_secrets
 
+- name: Pull container image {{ nextcloud_container_image }}
+  become: "{{ podman_rootless | bool }}"
+  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+  containers.podman.podman_image:
+    name: "{{ nextcloud_container_image }}"
+    tag: "{{ nextcloud_container_image_tag }}"
+    force: true
+
 # https://store.docker.com/images/nextcloud
-- name: Start Nextcloud container
+- name: Create Nextcloud container
   become: "{{ podman_rootless | bool }}"
   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
   containers.podman.podman_container:
     name: "{{ container_name }}"
-    image: "docker.io/nextcloud:{{ nextcloud_version }}"
+    image: "{{ nextcloud_container_image }}:{{ nextcloud_container_image_tag }}"
     state: created
     restart_policy: always
     recreate: "{{ podman_container_recreate | d(false) }}"
     pod: "{{ pod_name | default(omit) }}"
-    # network: "{{ podman_network_name }}"
+    network: "{{ podman_network_name if pod_name | d('') is falsy else [] }}"
     # published: "{{ nextcloud_container_exposed_port + ':80' if pod_name is truthy else omit }}"
     volume:
       - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud:/var/www/html:Z"
@@ -154,7 +115,7 @@
         - podman_generate_systemd
   vars:
     podman_operation: podman_generate_systemd
-    target: "{{ pod_name if pod_name is defined and pod_name | length > 0 else container_name }}"
+    target: "{{ pod_name if pod_name | d('') is truthy else container_name }}"
   tags: always
 
 - name: become block
@@ -166,12 +127,11 @@
         name: "{{ container_name }}"
       register: _container_info_results
 
-    - name: Register container IP
-      ansible.builtin.set_fact:
-        # _container_ip: "{{ vars['_container_create_results']['container']['NetworkSettings']['Networks'][podman_network_name]['IPAddress'] }}"
-        _container_ip: "{{ vars['_container_info_results']['containers'][0]['NetworkSettings']['Networks'][podman_network_name]['IPAddress'] }}"
-    # - debug: var=_container_ip
-
+    # - name: Register container IP
+    #   ansible.builtin.set_fact:
+    #     # _container_ip: "{{ vars['_container_create_results']['container']['NetworkSettings']['Networks'][podman_network_name]['IPAddress'] }}"
+    #     _container_ip: "{{ vars['_container_info_results']['containers'][0]['NetworkSettings']['Networks'][podman_network_name]['IPAddress'] }}"
+    # # - debug: var=_container_ip
     # - name: wait for nextcloud service comes up
     #   ansible.builtin.uri:
     #     url: "http://{{ _container_ip }}/"
@@ -182,13 +142,23 @@
     #   retries: 120
     #   delay: 10
 
-    - name: wait for nextcloud service comes up
-      ansible.builtin.command: podman exec -t nextcloud busybox wget -O - http://localhost/login
+    - name: wait for nextcloud service comes up (apache version)
+      ansible.builtin.command: podman exec -t {{ container_name }} busybox wget -O - http://localhost/login
       register: _result
       until: _result.rc == 0
       changed_when: _result.rc != 0
       retries: 120
       delay: 10
+      when: "'fpm' not in nextcloud_container_image_tag"
+
+    - name: wait for nextcloud service comes up (fpm version)
+      ansible.builtin.command: podman exec -t {{ container_name }} busybox nc -w 1 localhost 9000
+      register: _result
+      until: _result.rc == 0
+      changed_when: _result.rc != 0
+      retries: 120
+      delay: 10
+      when: "'fpm' in nextcloud_container_image_tag"
 
     - name: get enabled and disabled apps
       ansible.builtin.shell:

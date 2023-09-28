@@ -25,4 +25,4 @@
       changed_when: _result.rc != 0
       when:
         - not _nextcloud_app_updates.failed
-        - _nextcloud_app_updates.stdout_lines | length > 0
+        - _nextcloud_app_updates.stdout_lines is truthy

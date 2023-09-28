@@ -4,7 +4,7 @@ This role runs a Nextcloud instance on Podman.
 
 ## Requirements
 
-Use it on a machine setup with ansible role sleif.docker, sleif.redis_docker and sleif.mariadb_docker.
+Use it on a machine setup with ansible roles sleif.podman, sleif.caddy_container, sleif.redis_container and sleif.mariadb_container.
 
 ## Role Variables
 
@@ -14,6 +14,7 @@ See defaults/main.yml for customization.
 
 ```sh
 ansible-galaxy install sleif.podman --force
+ansible-galaxy install sleif.caddy_container --force
 ansible-galaxy install sleif.redis_container --force
 ansible-galaxy install sleif.mariadb_container --force
 ansible-galaxy install sleif.nextcloud_container --force
