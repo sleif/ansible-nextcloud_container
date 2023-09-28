@@ -1,14 +1,15 @@
 ---
 
-# - name: Gather info about specific network
-#   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
-#   become: "{{ podman_rootless | bool }}"
-#   containers.podman.podman_network_info:
-#     name: "{{ podman_network_name }}"
-#   register: _podman_network_info
-# - name: set_fact _podman_network_subnet
-#   ansible.builtin.set_fact:
-#     _podman_network_subnet: "{{ _podman_network_info.networks[0].subnets[0].subnet }}"
+- name: Gather info about specific network
+  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+  become: "{{ podman_rootless | bool }}"
+  containers.podman.podman_network_info:
+    name: "{{ podman_network_name }}"
+  register: _podman_network_info
+
+- name: set_fact _podman_network_subnet
+  ansible.builtin.set_fact:
+    _podman_network_subnet: "{{ _podman_network_info.networks[0].subnets[0].subnet }}"
 
 # the next task will return:
 # - _container_storage_dir_base_local
@@ -76,7 +77,7 @@
   containers.podman.podman_image:
     name: "{{ nextcloud_container_image }}"
     tag: "{{ nextcloud_container_image_tag }}"
-    force: true
+    # force: true
 
 # https://store.docker.com/images/nextcloud
 - name: Create Nextcloud container
