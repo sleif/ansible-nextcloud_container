@@ -69,6 +69,7 @@
   loop:
     - {name: 'nextcloud_admin_password', data: '{{ nextcloud_admin_password }}'}
     - {name: 'mariadb_password', data: '{{ mariadb_password }}'}
+  no_log: true
   tags: podman_secrets
 
 - name: Pull container image {{ nextcloud_container_image }}
