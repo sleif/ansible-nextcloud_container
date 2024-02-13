@@ -17,7 +17,7 @@ defaults:
 
 jobs:
   build:
-    uses: sleif/workflow_templates/ci-template_ansible-lint-galaxy.yml@main
+    uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
 
   # lint:
   #   name: Lint and Ansible Galaxy import
