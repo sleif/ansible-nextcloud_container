@@ -24,4 +24,4 @@ jobs:
           GALAXY_API_KEY: "${{ secrets.GALAXY_API_KEY }}"
         run: |
           echo "API: $GALAXY_API_KEY"
-        uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
+      - uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
