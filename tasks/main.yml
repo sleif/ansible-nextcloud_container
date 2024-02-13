@@ -39,6 +39,21 @@
     - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps"
     - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data"
     - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes"
+    - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php"
+
+- name: Create php config from nextcloud_php_config
+  ansible.builtin.copy:
+    dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini"
+    content: "{{ nextcloud_php_config | d('') }}"
+    mode: "0644"
+
+- name: Create php-fpm config from nextcloud_php_fpm_config
+  ansible.builtin.copy:
+    dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php/zzz-nextcloud-php-fpm-config.conf"
+    content: "{{ nextcloud_php_fpm_config | d('') }}"
+    mode: "0644"
+  # when:
+  #   - nextcloud_container_image_tag is search "fpm"
 
 - name: Update Nextcloud apps before a possible update of the container
   ansible.builtin.include_tasks:
@@ -69,6 +84,7 @@
   loop:
     - {name: 'nextcloud_admin_password', data: '{{ nextcloud_admin_password }}'}
     - {name: 'mariadb_password', data: '{{ mariadb_password }}'}
+    # - {name: 'redis_password', data: '{{ redis_password }}'}
   no_log: true
   tags: podman_secrets
 
@@ -78,7 +94,7 @@
   containers.podman.podman_image:
     name: "{{ nextcloud_container_image }}"
     tag: "{{ nextcloud_container_image_tag }}"
-    # force: true
+    force: true
 
 # https://store.docker.com/images/nextcloud
 - name: Create Nextcloud container
@@ -99,6 +115,12 @@
       - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps:/var/www/html/custom_apps"
       - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data:/var/www/html/data"
       - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes:/var/www/html/themes"
+      - "{{ _container_storage_dir_base }}/{{
+        container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini:/usr/local/etc/php/conf.d/zzz-nextcloud-php-config.ini"
+      - "{{ _container_storage_dir_base }}/{{ container_name ~
+        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/usr/local/etc/php-fpm.d/zzz-nextcloud-php-fpm-config.conf'
+        if 'fpm' in nextcloud_container_image_tag else container_name ~
+        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/tmp/zzz-nextcloud-php-fpm-config.conf.inactive'}}"
     secrets:
       - nextcloud_admin_password
       - mariadb_password

@@ -7,8 +7,8 @@ nextcloud_container_exposed_port: '80'
 # TODO: what if nginx is not on the same host?
 nginx_storage_dir_base: '/srv'
 
-nextcloud_overwritehost: "cloud.example.com"
-nextcloud_overwriteport: "443"
+# nextcloud_overwritehost: "cloud.example.com"
+# nextcloud_overwriteport: "443"
 
 # prerequisites redis and Mariadb
 redis_container_name: redis_for_nextcloud
@@ -57,3 +57,13 @@ ldap_auth_admin:
   server_uri: "{{ ldap_protocol }}://{{ ldap_host }}"
   bind_dn: "cn=admin,{{ ldap_base_dn }}"
   bind_pw: "{{ ldap_admin_password }}"
+
+# nextcloud_php_config: |
+#   opcache.memory_consumption=128
+# nextcloud_php_fpm_config: |
+#   [www]
+#   pm=dynamic
+#   pm.max_children=20
+#   pm.start_servers=5
+#   pm.min_spare_servers=5
+#   pm.max_spare_servers=15

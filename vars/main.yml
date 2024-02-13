@@ -9,6 +9,7 @@ nextcloud_container_env:
     NEXTCLOUD_TRUSTED_DOMAINS: "{{ nextcloud_trusted_domains }}"
     NEXTCLOUD_TABLE_PREFIX: "{{ nextcloud_table_prefix }}"
     REDIS_HOST: "{{ redis_container_name }}"
+    # REDIS_HOST_PASSWORD: "/run/secrets/redis_password"
     MYSQL_HOST: "{{ mariadb_container_name }}"
     MYSQL_DATABASE: "{{ mariadb_database | default('') }}"
     MYSQL_USER: "{{ mariadb_user }}"
@@ -20,13 +21,17 @@ nextcloud_container_env:
 # nexcloud config.php common parameters
 nextcloud_config_system:
   system:
-    overwritehost: "{{ nextcloud_overwritehost }}"
-    overwriteprotocol: "https"
+    default_phone_region: "DE"
+    loglevel: "{{ nextcloud_loglevel | d(2) }}"
+    # overwritehost: "{{ nextcloud_overwritehost }}"
+    # overwriteprotocol: "https"
     overwrite.cli.url: "https://{{ nextcloud_overwritehost }}:{{ nextcloud_overwriteport | d('443') }}"
+    trusted_proxies: "{{ networks.trusted.trusted_proxies | d([]) }}"
+    forwarded_for_headers:
+      - "HTTP_X_FORWARDED_FOR"
+    jpeg_quality: "60"
     preview_max_x: "2048"
     preview_max_y: "2048"
-    jpeg_quality: "60"
-    default_phone_region: "DE"
 
 # nexcloud config.php smtp parameters
 nextcloud_config_system_memory_caching:
