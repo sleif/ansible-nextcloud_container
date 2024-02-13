@@ -48,12 +48,12 @@
     mode: "0644"
 
 - name: Create php-fpm config from nextcloud_php_fpm_config
+  # when:
+  #   - nextcloud_container_image_tag is search "fpm"
   ansible.builtin.copy:
     dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php/zzz-nextcloud-php-fpm-config.conf"
     content: "{{ nextcloud_php_fpm_config | d('') }}"
     mode: "0644"
-  # when:
-  #   - nextcloud_container_image_tag is search "fpm"
 
 - name: Update Nextcloud apps before a possible update of the container
   ansible.builtin.include_tasks:
