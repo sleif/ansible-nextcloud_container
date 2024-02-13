@@ -1,5 +1,5 @@
 ---
-name: CI
+name: Template based CI workflow
 'on':
   pull_request:
   # schedule:
@@ -16,42 +16,44 @@ defaults:
     working-directory: 'sleif.ws'
 
 jobs:
+  build:
+    uses: sleif/workflow_templates/ci-template_ansible-lint-galaxy.yml@main
 
-  lint:
-    name: Lint and Ansible Galaxy import
-    runs-on: ubuntu-latest
-    steps:
-      # https://github.com/marketplace/actions/checkout
-      - name: Check out the codebase.
-        uses: actions/checkout@v4
-        with:
-          path: 'sleif.ws'
+  # lint:
+  #   name: Lint and Ansible Galaxy import
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     # https://github.com/marketplace/actions/checkout
+  #     - name: Check out the codebase.
+  #       uses: actions/checkout@v4
+  #       with:
+  #         path: 'sleif.ws'
 
-      # https://github.com/marketplace/actions/setup-python
-      - name: Set up Python 3.
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+  #     # https://github.com/marketplace/actions/setup-python
+  #     - name: Set up Python 3.
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.x'
 
-      - name: Install test dependencies.
-        run: pip3 install yamllint ansible ansible-lint
+  #     - name: Install test dependencies.
+  #       run: pip3 install yamllint ansible ansible-lint
 
-      - name: Yaml lint code.
-        run: |
-          yamllint --version
-          yamllint .
+  #     - name: Yaml lint code.
+  #       run: |
+  #         yamllint --version
+  #         yamllint .
 
-      - name: Ansible lint code.
-        run: |
-          ansible-lint --version
-          ansible-lint .
+  #     - name: Ansible lint code.
+  #       run: |
+  #         ansible-lint --version
+  #         ansible-lint .
 
-      - name: Import Galaxy Role
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        env:
-          GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
-        run: |
-          ansible-galaxy role import -s https://galaxy.ansible.com/api/ --api-key "${GALAXY_API_KEY}" "${GITHUB_REPOSITORY%/*}" "${GITHUB_REPOSITORY#*/}"
+  #     - name: Import Galaxy Role
+  #       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+  #       env:
+  #         GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
+  #       run: |
+  #         ansible-galaxy role import -s https://galaxy.ansible.com/api/ --api-key "${GALAXY_API_KEY}" "${GITHUB_REPOSITORY%/*}" "${GITHUB_REPOSITORY#*/}"
 
   # import_galaxy:
   #   name: Import Galaxy
