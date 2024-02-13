@@ -17,6 +17,10 @@ defaults:
 
 jobs:
   build:
-    env:
-      GALAXY_API_KEY: "${{ secrets.GALAXY_API_KEY }}"
-    uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
+    runs-on: ubuntu-latest
+    steps:
+      - name: retrieve secret
+        env:
+          GALAXY_API_KEY: "${{ secrets.GALAXY_API_KEY }}"
+      - name: include template
+        uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
