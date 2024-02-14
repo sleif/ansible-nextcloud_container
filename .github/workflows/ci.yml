@@ -31,4 +31,3 @@ jobs:
     #     run: |
     #       echo "API: $GALAXY_API_KEY"
     #   - name: Template workflow
-
