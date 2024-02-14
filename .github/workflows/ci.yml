@@ -23,7 +23,7 @@ jobs:
     # environment: build
     uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
     secrets:
-      token: ${{ secrets.GALAXY_API_KEY }}
+      GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
     # steps:
     #   - name: include template
     #     # env:
