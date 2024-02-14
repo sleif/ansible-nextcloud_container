@@ -1,24 +1,24 @@
 ---
 
-- name: nextcloud_update_apps | block
+- name: Nextcloud_update_apps | block
   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
   become: "{{ podman_rootless | bool }}"
   tags: nextcloud_update_apps
   block:
-    - name: nextcloud_update_apps | check for app updates
+    - name: Nextcloud_update_apps | check for app updates
       ansible.builtin.command:
         podman exec --user www-data {{ container_name }} php occ app:update --showonly
       register: _nextcloud_app_updates
       changed_when: _nextcloud_app_updates.rc != 0
       ignore_errors: true
 
-    - name: nextcloud_update_apps | list app updates
+    - name: Nextcloud_update_apps | list app updates
       ansible.builtin.debug:
         var: _nextcloud_app_updates.stdout_lines
       when:
         - not _nextcloud_app_updates.failed
 
-    - name: nextcloud_update_apps | apply app updates
+    - name: Nextcloud_update_apps | apply app updates
       ansible.builtin.command:
         podman exec --user www-data {{ container_name }} php occ app:update --all
       register: _result

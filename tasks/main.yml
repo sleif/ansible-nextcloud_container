@@ -7,7 +7,7 @@
     name: "{{ podman_network_name }}"
   register: _podman_network_info
 
-- name: set_fact _podman_network_subnet
+- name: Set_fact _podman_network_subnet
   ansible.builtin.set_fact:
     _podman_network_subnet: "{{ _podman_network_info.networks[0].subnets[0].subnet }}"
 
@@ -142,7 +142,7 @@
     target: "{{ pod_name if pod_name | d('') is truthy else container_name }}"
   tags: always
 
-- name: become block
+- name: Become block
   become: "{{ podman_rootless | bool }}"
   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
   block:
@@ -156,7 +156,7 @@
     #     # _container_ip: "{{ vars['_container_create_results']['container']['NetworkSettings']['Networks'][podman_network_name]['IPAddress'] }}"
     #     _container_ip: "{{ vars['_container_info_results']['containers'][0]['NetworkSettings']['Networks'][podman_network_name]['IPAddress'] }}"
     # # - debug: var=_container_ip
-    # - name: wait for nextcloud service comes up
+    # - name: Wait for nextcloud service comes up
     #   ansible.builtin.uri:
     #     url: "http://{{ _container_ip }}/"
     #     status_code: [200, 400]
@@ -166,7 +166,7 @@
     #   retries: 120
     #   delay: 10
 
-    - name: wait for nextcloud service comes up (apache version)
+    - name: Wait for nextcloud service comes up (apache version)
       ansible.builtin.command: podman exec -t {{ container_name }} busybox wget -O - http://localhost/login
       register: _result
       until: _result.rc == 0
@@ -175,7 +175,7 @@
       delay: 10
       when: "'fpm' not in nextcloud_container_image_tag"
 
-    - name: wait for nextcloud service comes up (fpm version)
+    - name: Wait for nextcloud service comes up (fpm version)
       ansible.builtin.command: podman exec -t {{ container_name }} busybox nc -w 1 localhost 9000
       register: _result
       until: _result.rc == 0
@@ -184,17 +184,17 @@
       delay: 10
       when: "'fpm' in nextcloud_container_image_tag"
 
-    - name: get enabled and disabled apps
+    - name: Get enabled and disabled apps
       ansible.builtin.shell:
         set -o pipefail && podman exec --user www-data {{ container_name }} php occ app:list --shipped=false --output=json | grep "{"
       register: _nextcloud_app_list_result
       changed_when: false
 
-    - name: set_fact _nextcloud_app_list
+    - name: Set_fact _nextcloud_app_list
       ansible.builtin.set_fact:
         _nextcloud_app_list: "{{ _nextcloud_app_list_result.stdout | from_json }}"
 
-    - name: install default and custom apps
+    - name: Install default and custom apps
       ansible.builtin.command:
         podman exec --user www-data {{ container_name }} php occ app:install {{ item }}
       loop: "{{ [nextcloud_apps_enabled_default + nextcloud_apps_enabled_custom] | flatten | unique }}"
@@ -206,7 +206,7 @@
       failed_when: false
       ignore_errors: true
 
-    - name: enable default and custom apps
+    - name: Enable default and custom apps
       ansible.builtin.command:
         podman exec --user www-data {{ container_name }} php occ app:enable {{ item }}
       loop: "{{ [nextcloud_apps_enabled_default + nextcloud_apps_enabled_custom] | flatten | unique }}"
@@ -214,7 +214,7 @@
       register: _result
       changed_when: _result.rc != 0
 
-    - name: remove apps not wanted
+    - name: Remove apps not wanted
       ansible.builtin.command:
         podman exec --user www-data {{ container_name }} php occ app:disable {{ item }}
       loop: "{{ nextcloud_apps_disabled }}"
@@ -223,36 +223,36 @@
       changed_when: _result.rc != 0
 
     # https://www.jeffgeerling.com/blog/2017/changing-deeply-nested-dict-variable-ansible-playbook
-    - name: merge nextcloud_config | system
+    - name: Merge nextcloud_config | system
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) | combine({'system': nextcloud_config_system.system}, recursive=true) }}"
 
-    - name: merge nextcloud_config | system memory caching
+    - name: Merge nextcloud_config | system memory caching
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) | combine({'system': nextcloud_config_system_memory_caching.system}, recursive=true) }}"
 
-    - name: merge nextcloud_config | system mail
+    - name: Merge nextcloud_config | system mail
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) | combine({'system': nextcloud_config_system_smtp.system}, recursive=true) }}"
       when: nextcloud_config_system_smtp.system.mail_smtphost
 
-    - name: merge nextcloud_config | apps preview
+    - name: Merge nextcloud_config | apps preview
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) | combine({'apps': {'preview': nextcloud_config_apps_preview.apps.preview}}, recursive=true) }}"
 
-    - name: merge nextcloud_config | apps previewgenerator
+    - name: Merge nextcloud_config | apps previewgenerator
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) |
                             combine({'apps': {'previewgenerator': nextcloud_config_apps_previewgenerator.apps.previewgenerator}}, recursive=true) }}"
       tags: config_import
 
-    - name: merge nextcloud_config | apps user_ldap
+    - name: Merge nextcloud_config | apps user_ldap
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) |
                           combine({'apps': {'user_ldap': nextcloud_config_apps_user_ldap.apps.user_ldap}}, recursive=true) }}"
       when: nextcloud_config_apps_user_ldap.apps.user_ldap.s01ldap_base
 
-    - name: write temporary config file /dev/shm/nextcloud_config_file_for_import
+    - name: Write temporary config file /dev/shm/nextcloud_config_file_for_import
       ansible.builtin.copy:
         content: "{{ nextcloud_config | to_nice_json(indent=2) }}"
         dest: "/dev/shm/nextcloud_config_file_for_import"
@@ -262,7 +262,7 @@
       changed_when: false
       tags: config_import
 
-    - name: apply temporary config file /dev/shm/nextcloud_config_file_for_import
+    - name: Apply temporary config file /dev/shm/nextcloud_config_file_for_import
       ansible.builtin.shell: >
         set -o pipefail && podman cp /dev/shm/nextcloud_config_file_for_import {{ container_name }}:/dev/shm/nextcloud_config_file_for_import &&
         podman exec --user www-data {{ container_name }} php occ config:import /dev/shm/nextcloud_config_file_for_import &&
@@ -271,7 +271,7 @@
       changed_when: _result is success
       tags: config_import
 
-    - name: remove temporary config file /dev/shm/nextcloud_config_file_for_import
+    - name: Remove temporary config file /dev/shm/nextcloud_config_file_for_import
       ansible.builtin.file:
         path: /dev/shm/nextcloud_config_file_for_import
         state: absent
@@ -285,7 +285,7 @@
       tags:
         - cronjob
 
-    - name: run occ db:add-missing-indices
+    - name: Run occ db:add-missing-indices
       ansible.builtin.command:
         podman exec --user www-data {{ container_name }} php occ db:add-missing-indices --no-interaction
       register: _result
