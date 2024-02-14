@@ -12,22 +12,11 @@ name: Template based CI workflow
       - '*'
 
 defaults:
-  # env:
-  #   GALAXY_API_KEY: "${{ secrets.GALAXY_API_KEY }}"
   run:
     working-directory: 'sleif.ws'
 
 jobs:
   build:
-    # runs-on: ubuntu-latest
-    # environment: build
     uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
     secrets:
       GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
-    # steps:
-    #   - name: include template
-    #     # env:
-    #     #   GALAXY_API_KEY: "${{ secrets.GALAXY_API_KEY }}"
-    #     run: |
-    #       echo "API: $GALAXY_API_KEY"
-    #   - name: Template workflow
