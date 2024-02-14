@@ -19,9 +19,9 @@ defaults:
 
 jobs:
   build:
+    runs-on: ubuntu-latest
     environment: build
     uses: sleif/workflow_templates/.github/workflows/ci-template_ansible-lint-galaxy.yml@main
-    # runs-on: ubuntu-latest
     # steps:
     #   - name: include template
     #     # env:
