@@ -10,6 +10,10 @@ Use it on a machine setup with ansible roles sleif.podman, sleif.caddy_container
 
 See defaults/main.yml for customization.
 
+### SE Linux related
+
+- If necessary make use of `container_volumes_parameter` which can contain values like `:Z`. It defaults to `''`.
+
 ## Dependencies
 
 ```sh

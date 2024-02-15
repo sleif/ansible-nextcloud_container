@@ -110,17 +110,19 @@
     network: "{{ podman_network_name if pod_name | d('') is falsy else [] }}"
     # published: "{{ nextcloud_container_exposed_port + ':80' if pod_name is truthy else omit }}"
     volume:
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud:/var/www/html"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config:/var/www/html/config"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps:/var/www/html/custom_apps"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data:/var/www/html/data"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes:/var/www/html/themes"
+      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud:/var/www/html{{ container_volumes_parameter | d('') }}"
+      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config:/var/www/html/config{{ container_volumes_parameter | d('') }}"
+      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps:/var/www/html/custom_apps{{ container_volumes_parameter | d('') }}"
+      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data:/var/www/html/data{{ container_volumes_parameter | d('') }}"
+      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes:/var/www/html/themes{{ container_volumes_parameter | d('') }}"
       - "{{ _container_storage_dir_base }}/{{
-        container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini:/usr/local/etc/php/conf.d/zzz-nextcloud-php-config.ini"
+        container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini:/usr/local/etc/php/conf.d/zzz-nextcloud-php-config.ini{{
+        container_volumes_parameter | d('') }}"
       - "{{ _container_storage_dir_base }}/{{ container_name ~
-        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/usr/local/etc/php-fpm.d/zzz-nextcloud-php-fpm-config.conf'
-        if 'fpm' in nextcloud_container_image_tag else container_name ~
-        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/tmp/zzz-nextcloud-php-fpm-config.conf.inactive'}}"
+        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/usr/local/etc/php-fpm.d/zzz-nextcloud-php-fpm-config.conf' ~
+        container_volumes_parameter | d('') if 'fpm' in nextcloud_container_image_tag else container_name ~
+        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/tmp/zzz-nextcloud-php-fpm-config.conf.inactive' ~
+        container_volumes_parameter | d('') }}"
     secrets:
       - nextcloud_admin_password
       - mariadb_password
