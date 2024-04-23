@@ -42,12 +42,18 @@
     - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php"
 
 - name: Create php config from nextcloud_php_config
+  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+  become_method: containers.podman.podman_unshare
+  become: "{{ podman_rootless | bool }}"
   ansible.builtin.copy:
     dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini"
     content: "{{ nextcloud_php_config | d('') }}"
     mode: "0644"
 
 - name: Create php-fpm config from nextcloud_php_fpm_config
+  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+  become_method: containers.podman.podman_unshare
+  become: "{{ podman_rootless | bool }}"
   # when:
   #   - nextcloud_container_image_tag is search "fpm"
   ansible.builtin.copy:
