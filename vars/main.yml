@@ -95,7 +95,7 @@ nextcloud_config_apps_user_ldap:
       s01ldap_configuration_active: "1"
       s01ldap_display_name: 'displayname'
       s01ldap_dn: "{{ ldap_auth_admin.bind_dn }}"
-      s01ldap_agent_password: "{{ ldap_auth_admin.bind_pw }}"
+      s01ldap_agent_password: "{{ ldap_auth_admin.bind_pw | b64encode }}"
       s01ldap_host: "{{ ldap_auth_admin.server_uri }}"
       s01ldap_email_attr: 'mail'
       s01ldap_experienced_admin: "0"
