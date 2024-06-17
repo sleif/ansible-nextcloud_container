@@ -69,86 +69,54 @@
         - nextcloud_update_apps
   tags: always
 
-- name: Include role sleif.podman podman_operation podman_pod_create
+- name: include_role sleif.podman podman_operation podman_create_container for mariadb
   ansible.builtin.include_role:
     name: sleif.podman
     apply:
       tags:
-        - podman_pod_create
+        - podman_container_create
   vars:
-    podman_operation: podman_pod_create
-  tags: always
-
-- name: Create Podman secrets
-  become: "{{ podman_rootless | bool }}"
-  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
-  containers.podman.podman_secret:
-    state: present
-    name: "{{ item.name }}"
-    data: "{{ item.data }}"
-    skip_existing: true
-  loop:
-    - {name: 'nextcloud_admin_password', data: '{{ nextcloud_admin_password }}'}
-    - {name: 'mariadb_password', data: '{{ mariadb_password }}'}
-    # - {name: 'redis_password', data: '{{ redis_password }}'}
-  no_log: true
-  tags: podman_secrets
-
-- name: Pull container image {{ nextcloud_container_image }}
-  become: "{{ podman_rootless | bool }}"
-  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
-  containers.podman.podman_image:
-    name: "{{ nextcloud_container_image }}"
-    tag: "{{ nextcloud_container_image_tag }}"
-    force: true
-
-# https://store.docker.com/images/nextcloud
-- name: Create Nextcloud container
-  become: "{{ podman_rootless | bool }}"
-  become_user: "{{ podman_user if podman_rootless | bool else omit }}"
-  containers.podman.podman_container:
-    name: "{{ container_name }}"
-    image: "{{ nextcloud_container_image }}:{{ nextcloud_container_image_tag }}"
-    state: created
-    restart_policy: always
-    recreate: "{{ podman_container_recreate | d(false) }}"
-    pod: "{{ pod_name | default(omit) }}"
-    network: "{{ podman_network_name if pod_name | d('') is falsy else [] }}"
-    # published: "{{ nextcloud_container_exposed_port + ':80' if pod_name is truthy else omit }}"
-    volume:
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud:/var/www/html{{ container_volumes_parameter | d('') }}"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config:/var/www/html/config{{ container_volumes_parameter | d('') }}"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps:/var/www/html/custom_apps{{ container_volumes_parameter | d('') }}"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data:/var/www/html/data{{ container_volumes_parameter | d('') }}"
-      - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes:/var/www/html/themes{{ container_volumes_parameter | d('') }}"
-      - "{{ _container_storage_dir_base }}/{{
-        container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini:/usr/local/etc/php/conf.d/zzz-nextcloud-php-config.ini{{
-        container_volumes_parameter | d('') }}"
-      - "{{ _container_storage_dir_base }}/{{ container_name ~
-        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/usr/local/etc/php-fpm.d/zzz-nextcloud-php-fpm-config.conf' ~
-        container_volumes_parameter | d('') if 'fpm' in nextcloud_container_image_tag else container_name ~
-        '/nextcloud_php/zzz-nextcloud-php-fpm-config.conf:/tmp/zzz-nextcloud-php-fpm-config.conf.inactive' ~
-        container_volumes_parameter | d('') }}"
-    secrets:
-      - nextcloud_admin_password
-      - mariadb_password
-    env: "{{ nextcloud_container_env.main | combine(nextcloud_container_env_options | default({})) }}"
-    timezone: "Europe/Berlin"
-    tmpfs:
-      "/tmp": "rw,mode=1777"
-      # "/tmp": "rw,size=787448k,mode=1777"
-  register: _container_create_results
-
-- name: Include role sleif.podman podman_operation podman_generate_systemd
-  ansible.builtin.include_role:
-    name: sleif.podman
-    apply:
-      tags:
-        - podman_generate_systemd
-  vars:
-    podman_operation: podman_generate_systemd
-    target: "{{ pod_name if pod_name | d('') is truthy else container_name }}"
-  tags: always
+    # podman_rootless: true
+    # podman_network_name: "{{ podman_networks.podman_network_rootless.podman_network_name if podman_rootless | bool else
+    #   podman_networks.podman_network_root.podman_network_name }}"
+    podman_operation: podman_container_create
+    container_name: '{{ nextcloud_container_name }}'
+    target: "{{ pod_name if pod_name | d('') is truthy else pihole_container_name }}"
+    _container:
+      name: '{{ container_name }}'
+      image:
+        name: "{{ nextcloud_container_image }}"
+        tag: "{{ nextcloud_container_image_tag }}"
+      network: "{{ podman_network_name if pod_name | d('') is falsy else [] }}"
+      pod: "{{ pod_name | default(omit) }}"
+      stop_timeout: 90
+      volumes:
+        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud', 'target': '/var/www/html{{
+          container_volumes_parameter | d("") }}', 'mode': '0750'}
+        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config', 'target': '/var/www/html/config{{
+          container_volumes_parameter | d("") }}', 'mode': '0750'}
+        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps', 'target': '/var/www/html/custom_apps{{
+          container_volumes_parameter | d("") }}', 'mode': '0750'}
+        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data', 'target': '/var/www/html/data{{
+          container_volumes_parameter | d("") }}', 'mode': '0750'}
+        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes', 'target': '/var/www/html/themes{{
+          container_volumes_parameter | d("") }}', 'mode': '0750'}
+        - {'host': '{{ _container_storage_dir_base }}/{{
+          container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini', 'target': '/usr/local/etc/php/conf.d/zzz-nextcloud-php-config.ini{{
+          container_volumes_parameter | d("") }}', 'mode': '0750'}
+        - {'host': '{{ _container_storage_dir_base }}/{{ container_name ~
+          "/nextcloud_php/zzz-nextcloud-php-fpm-config.conf" if "fpm" in nextcloud_container_image_tag else container_name ~
+          "/nextcloud_php/zzz-nextcloud-php-fpm-config.conf" }}', 'target': '{{
+          "/usr/local/etc/php-fpm.d/zzz-nextcloud-php-fpm-config.conf" ~ container_volumes_parameter | d("") if "fpm" in nextcloud_container_image_tag
+          else "/tmp/zzz-nextcloud-php-fpm-config.conf.inactive" ~ container_volumes_parameter | d("") }}', 'mode': '0750'}
+      secrets:
+        - {name: 'nextcloud_admin_password', data: '{{ nextcloud_admin_password }}'}
+        - {name: 'mariadb_password', data: '{{ mariadb_password }}'}
+      env: "{{ nextcloud_container_env.main | combine(nextcloud_container_env_options | default({})) }}"
+      timezone: "Europe/Berlin"
+      tmpfs:
+        "/tmp": "rw,mode=1777"
+  tags: podman_container_create
 
 - name: Become block
   become: "{{ podman_rootless | bool }}"
