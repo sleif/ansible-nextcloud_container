@@ -192,6 +192,10 @@
       delay: 10
       when: "'fpm' in nextcloud_container_image_tag"
 
+    - name: Wait a few seconds more
+      ansible.builtin.wait_for:
+        timeout: 60
+
     - name: Get enabled and disabled apps
       ansible.builtin.shell:
         set -o pipefail && podman exec --user www-data {{ container_name }} php occ app:list --shipped=false --output=json | grep "{"
