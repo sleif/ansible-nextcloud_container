@@ -16,7 +16,7 @@ nextcloud_container_env:
     MYSQL_PASSWORD_FILE: "/run/secrets/mariadb_password"
     PHP_MEMORY_LIMIT: "{{ nextcloud_php_memory_limit }}"
     PHP_UPLOAD_LIMIT: "{{ nextcloud_php_upload_limit }}"
-    TRUSTED_PROXIES: "{{ _podman_network_subnet }}"
+    TRUSTED_PROXIES: "{{ _podman_network_subnet | d(nextcloud_trusted_proxies | d(''))}}"
 
 # nexcloud config.php common parameters
 nextcloud_config_system:

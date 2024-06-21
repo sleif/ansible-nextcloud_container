@@ -1,15 +1,18 @@
 ---
 
-- name: Gather info about specific network
+- name: Gather info about specific network  # noqa: ignore-errors
   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
   become: "{{ podman_rootless | bool }}"
   containers.podman.podman_network_info:
     name: "{{ podman_network_name }}"
   register: _podman_network_info
+  ignore_errors: true
 
 - name: Set_fact _podman_network_subnet
   ansible.builtin.set_fact:
     _podman_network_subnet: "{{ _podman_network_info.networks[0].subnets[0].subnet }}"
+  when:
+    - not _podman_network_info.failed | bool
 
 # the next task will return:
 # - _container_storage_dir_base_local
@@ -26,27 +29,61 @@
       paths: "{{ lookup('config', 'DEFAULT_ROLES_PATH') }}"
   tags: always
 
-- name: Create persistant nextcloud data directories
+- name: set fact _nextcloud_volumes
+  ansible.builtin.set_fact:
+    _nextcloud_volumes:
+      - host: '{{ _container_storage_dir_base ~ "/" ~ nextcloud_container_name ~ "/nextcloud_php/zzz-nextcloud-php-config.ini" }}'
+        target: '/usr/local/etc/php/conf.d/zzz-nextcloud-php-config.ini{{ container_volumes_parameter | d("") }}'
+        mode: '0640'
+        state: present
+      - host: '{{ _container_storage_dir_base }}/{{ nextcloud_container_name ~ "/nextcloud_php/zzz-nextcloud-php-fpm-config.conf"
+          if "fpm" in nextcloud_container_image_tag else nextcloud_container_name ~ "/nextcloud_php/zzz-nextcloud-php-fpm-config.conf" }}'
+        target: '{{ "/usr/local/etc/php-fpm.d/zzz-nextcloud-php-fpm-config.conf" ~ container_volumes_parameter | d("")
+          if "fpm" in nextcloud_container_image_tag else "/tmp/zzz-nextcloud-php-fpm-config.conf.inactive" ~ container_volumes_parameter | d("") }}'
+        mode: '0640'
+        state: present
+
+- name: block for preparing volumes
+  when:
+    - pod_name is not defined or pod_name | length == 0
+  block:
+    - name: include_tasks from nextcloud_set_fact_pod_volumes
+      ansible.builtin.include_tasks:
+        file: nextcloud_set_fact_pod_volumes.yml
+        apply:
+          tags:
+            - nextcloud_set_fact_pod_volumes
+      tags: always
+
+    - name: Create persistant nextcloud data directories
+      become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+      become_method: containers.podman.podman_unshare
+      become: "{{ podman_rootless | bool }}"
+      ansible.builtin.file:
+        path: "{{ item.host }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop: "{{ _pod_volumes }}"
+
+    - name: set_fact add _pod_volumes to _nextcloud_volumes
+      ansible.builtin.set_fact:
+        _nextcloud_volumes: "{{ _nextcloud_volumes + _pod_volumes }}"
+
+- name: Create nextcloud_php directory
   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
+  become_method: containers.podman.podman_unshare
   become: "{{ podman_rootless | bool }}"
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ _container_storage_dir_base }}/{{ nextcloud_container_name }}/nextcloud_php"
+    mode: "0750"
     state: directory
-    mode: '0750'
-  loop:
-    - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud"
-    - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config"
-    - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps"
-    - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data"
-    - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes"
-    - "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php"
 
 - name: Create php config from nextcloud_php_config
   become_user: "{{ podman_user if podman_rootless | bool else omit }}"
   become_method: containers.podman.podman_unshare
   become: "{{ podman_rootless | bool }}"
   ansible.builtin.copy:
-    dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini"
+    dest: "{{ _container_storage_dir_base }}/{{ nextcloud_container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini"
     content: "{{ nextcloud_php_config | d('') }}"
     mode: "0644"
 
@@ -57,7 +94,7 @@
   # when:
   #   - nextcloud_container_image_tag is search "fpm"
   ansible.builtin.copy:
-    dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_php/zzz-nextcloud-php-fpm-config.conf"
+    dest: "{{ _container_storage_dir_base }}/{{ nextcloud_container_name }}/nextcloud_php/zzz-nextcloud-php-fpm-config.conf"
     content: "{{ nextcloud_php_fpm_config | d('') }}"
     mode: "0644"
 
@@ -90,25 +127,7 @@
       network: "{{ podman_network_name if pod_name | d('') is falsy else [] }}"
       pod: "{{ pod_name | default(omit) }}"
       stop_timeout: 90
-      volumes:
-        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud', 'target': '/var/www/html{{
-          container_volumes_parameter | d("") }}', 'mode': '0750'}
-        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config', 'target': '/var/www/html/config{{
-          container_volumes_parameter | d("") }}', 'mode': '0750'}
-        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_custom_apps', 'target': '/var/www/html/custom_apps{{
-          container_volumes_parameter | d("") }}', 'mode': '0750'}
-        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_data', 'target': '/var/www/html/data{{
-          container_volumes_parameter | d("") }}', 'mode': '0750'}
-        - {'host': '{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_themes', 'target': '/var/www/html/themes{{
-          container_volumes_parameter | d("") }}', 'mode': '0750'}
-        - {'host': '{{ _container_storage_dir_base }}/{{
-          container_name }}/nextcloud_php/zzz-nextcloud-php-config.ini', 'target': '/usr/local/etc/php/conf.d/zzz-nextcloud-php-config.ini{{
-          container_volumes_parameter | d("") }}', 'mode': '0750'}
-        - {'host': '{{ _container_storage_dir_base }}/{{ container_name ~
-          "/nextcloud_php/zzz-nextcloud-php-fpm-config.conf" if "fpm" in nextcloud_container_image_tag else container_name ~
-          "/nextcloud_php/zzz-nextcloud-php-fpm-config.conf" }}', 'target': '{{
-          "/usr/local/etc/php-fpm.d/zzz-nextcloud-php-fpm-config.conf" ~ container_volumes_parameter | d("") if "fpm" in nextcloud_container_image_tag
-          else "/tmp/zzz-nextcloud-php-fpm-config.conf.inactive" ~ container_volumes_parameter | d("") }}', 'mode': '0750'}
+      volumes: "{{ _nextcloud_volumes }}"
       secrets:
         - {name: 'nextcloud_admin_password', data: '{{ nextcloud_admin_password }}'}
         - {name: 'mariadb_password', data: '{{ mariadb_password }}'}
@@ -124,7 +143,7 @@
   block:
     - name: Get Nextcloud container info
       containers.podman.podman_container_info:
-        name: "{{ container_name }}"
+        name: "{{ nextcloud_container_name }}"
       register: _container_info_results
 
     # - name: Register container IP
@@ -143,7 +162,7 @@
     #   delay: 10
 
     - name: Wait for nextcloud service comes up (apache version)
-      ansible.builtin.command: podman exec -t {{ container_name }} busybox wget -O - http://localhost/login
+      ansible.builtin.command: podman exec -t {{ nextcloud_container_name }} busybox wget -O - http://localhost/login
       register: _result
       until: _result.rc == 0
       changed_when: _result.rc != 0
@@ -152,7 +171,7 @@
       when: "'fpm' not in nextcloud_container_image_tag"
 
     - name: Wait for nextcloud service comes up (fpm version)
-      ansible.builtin.command: podman exec -t {{ container_name }} busybox nc -w 1 localhost 9000
+      ansible.builtin.command: podman exec -t {{ nextcloud_container_name }} busybox nc -w 1 localhost 9000
       register: _result
       until: _result.rc == 0
       changed_when: _result.rc != 0
@@ -166,7 +185,7 @@
 
     - name: Get enabled and disabled apps
       ansible.builtin.shell:
-        set -o pipefail && podman exec --user www-data {{ container_name }} php occ app:list --shipped=false --output=json | grep "{"
+        set -o pipefail && podman exec --user www-data {{ nextcloud_container_name }} php occ app:list --shipped=false --output=json | grep "{"
       register: _nextcloud_app_list_result
       changed_when: false
 
@@ -176,7 +195,7 @@
 
     - name: Install default and custom apps
       ansible.builtin.command:
-        podman exec --user www-data {{ container_name }} php occ app:install {{ item }}
+        podman exec --user www-data {{ nextcloud_container_name }} php occ app:install {{ item }}
       loop: "{{ [nextcloud_apps_enabled_default + nextcloud_apps_enabled_custom] | flatten | unique }}"
       when:
         - item not in _nextcloud_app_list.enabled
@@ -188,7 +207,7 @@
 
     - name: Enable default and custom apps
       ansible.builtin.command:
-        podman exec --user www-data {{ container_name }} php occ app:enable {{ item }}
+        podman exec --user www-data {{ nextcloud_container_name }} php occ app:enable {{ item }}
       loop: "{{ [nextcloud_apps_enabled_default + nextcloud_apps_enabled_custom] | flatten | unique }}"
       when: item not in _nextcloud_app_list.enabled
       register: _result
@@ -196,7 +215,7 @@
 
     - name: Remove apps not wanted
       ansible.builtin.command:
-        podman exec --user www-data {{ container_name }} php occ app:disable {{ item }}
+        podman exec --user www-data {{ nextcloud_container_name }} php occ app:disable {{ item }}
       loop: "{{ nextcloud_apps_disabled }}"
       when: item in _nextcloud_app_list.enabled
       register: _result
@@ -236,7 +255,7 @@
       ansible.builtin.copy:
         content: "{{ nextcloud_config | to_nice_json(indent=2) }}"
         dest: "/dev/shm/nextcloud_config_file_for_import"
-        # dest: "{{ _container_storage_dir_base }}/{{ container_name }}/nextcloud_config/nextcloud_config_file_for_import"
+        # dest: "{{ _container_storage_dir_base }}/{{ nextcloud_container_name }}/nextcloud_config/nextcloud_config_file_for_import"
         mode: "0444"
         # setype: "container_file_t"
       changed_when: false
@@ -244,9 +263,9 @@
 
     - name: Apply temporary config file /dev/shm/nextcloud_config_file_for_import
       ansible.builtin.shell: >
-        set -o pipefail && podman cp /dev/shm/nextcloud_config_file_for_import {{ container_name }}:/dev/shm/nextcloud_config_file_for_import &&
-        podman exec --user www-data {{ container_name }} php occ config:import /dev/shm/nextcloud_config_file_for_import &&
-        podman exec {{ container_name }} rm -f /dev/shm/nextcloud_config_file_for_import
+        set -o pipefail && podman cp /dev/shm/nextcloud_config_file_for_import {{ nextcloud_container_name }}:/dev/shm/nextcloud_config_file_for_import &&
+        podman exec --user www-data {{ nextcloud_container_name }} php occ config:import /dev/shm/nextcloud_config_file_for_import &&
+        podman exec {{ nextcloud_container_name }} rm -f /dev/shm/nextcloud_config_file_for_import
       register: _result
       changed_when: _result is success
       tags: config_import
@@ -261,12 +280,12 @@
       ansible.builtin.cron:
         name: Nextcloud cronjob
         minute: "*/5"
-        job: "podman exec --user www-data {{ container_name }} php /var/www/html/cron.php"
+        job: "podman exec --user www-data {{ nextcloud_container_name }} php /var/www/html/cron.php"
       tags:
         - cronjob
 
     - name: Run occ db:add-missing-indices
       ansible.builtin.command:
-        podman exec --user www-data {{ container_name }} php occ db:add-missing-indices --no-interaction
+        podman exec --user www-data {{ nextcloud_container_name }} php occ db:add-missing-indices --no-interaction
       register: _result
       changed_when: _result is success

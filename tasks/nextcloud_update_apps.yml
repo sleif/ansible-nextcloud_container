@@ -7,7 +7,7 @@
   block:
     - name: Nextcloud_update_apps | check for app updates
       ansible.builtin.command:
-        podman exec --user www-data {{ container_name }} php occ app:update --showonly
+        podman exec --user www-data {{ nextcloud_container_name }} php occ app:update --showonly
       register: _nextcloud_app_updates
       changed_when: _nextcloud_app_updates.rc != 0
       ignore_errors: true
@@ -20,7 +20,7 @@
 
     - name: Nextcloud_update_apps | apply app updates
       ansible.builtin.command:
-        podman exec --user www-data {{ container_name }} php occ app:update --all
+        podman exec --user www-data {{ nextcloud_container_name }} php occ app:update --all
       register: _result
       changed_when: _result.rc != 0
       when:

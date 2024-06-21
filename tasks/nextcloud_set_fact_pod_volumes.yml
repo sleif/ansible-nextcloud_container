@@ -1,0 +1,26 @@
+---
+
+- name: nextcloud_set_fact_pod_volumes | set_fact
+  ansible.builtin.set_fact:
+    pod_volumes:
+      - host: '{{ _container_storage_dir_base ~ "/" ~ container_name ~ "/nextcloud" }}'
+        target: '/var/www/html{{ container_volumes_parameter | d("") }}'
+        mode: '0750'
+        state: directory
+      - host: '{{ _container_storage_dir_base ~ "/" ~ container_name ~ "/nextcloud_config" }}'
+        target: '/var/www/html/config{{ container_volumes_parameter | d("") }}'
+        mode: '0750'
+        state: directory
+      - host: '{{ _container_storage_dir_base ~ "/" ~ container_name ~ "/nextcloud_custom_apps" }}'
+        target: '/var/www/html/custom_apps{{ container_volumes_parameter | d("") }}'
+        mode: '0750'
+        state: directory
+      - host: '{{ _container_storage_dir_base ~ "/" ~ container_name ~ "/nextcloud_data" }}'
+        target: '/var/www/html/data{{ container_volumes_parameter | d("") }}'
+        mode: '0750'
+        state: directory
+      - host: '{{ _container_storage_dir_base ~ "/" ~ container_name ~ "/nextcloud_themes" }}'
+        target: '/var/www/html/themes{{ container_volumes_parameter | d("") }}'
+        mode: '0750'
+        state: directory
+  tags: always
