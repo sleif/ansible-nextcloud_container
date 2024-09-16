@@ -20,7 +20,8 @@ mariadb_database: "mariadb_custom_database"
 # nexcloud container environment:
 nextcloud_admin_user: "admin"
 nextcloud_admin_password: "password"
-nextcloud_trusted_domains: "127.0.0.1"
+nextcloud_trusted_domains:
+  - "127.0.0.1"
 nextcloud_table_prefix: "oc_"
 nextcloud_php_memory_limit: 1024M
 nextcloud_php_upload_limit: 1024M

@@ -5,8 +5,6 @@ nextcloud_container_env:
   main:
     NEXTCLOUD_ADMIN_USER: "{{ nextcloud_admin_user }}"
     NEXTCLOUD_ADMIN_PASSWORD_FILE: "/run/secrets/nextcloud_admin_password"
-    # NEXTCLOUD_ADMIN_PASSWORD: "{{ nextcloud_admin_password }}"
-    NEXTCLOUD_TRUSTED_DOMAINS: "{{ nextcloud_trusted_domains }}"
     NEXTCLOUD_TABLE_PREFIX: "{{ nextcloud_table_prefix }}"
     REDIS_HOST: "{{ redis_container_name }}"
     # REDIS_HOST_PASSWORD: "/run/secrets/redis_password"
@@ -16,7 +14,6 @@ nextcloud_container_env:
     MYSQL_PASSWORD_FILE: "/run/secrets/mariadb_password"
     PHP_MEMORY_LIMIT: "{{ nextcloud_php_memory_limit }}"
     PHP_UPLOAD_LIMIT: "{{ nextcloud_php_upload_limit }}"
-    TRUSTED_PROXIES: "{{ _podman_network_subnet | d(nextcloud_trusted_proxies | d(''))}}"
 
 # nexcloud config.php common parameters
 nextcloud_config_system:
@@ -26,9 +23,11 @@ nextcloud_config_system:
     # overwritehost: "{{ nextcloud_overwritehost }}"
     # overwriteprotocol: "https"
     overwrite.cli.url: "https://{{ nextcloud_overwritehost }}:{{ nextcloud_overwriteport | d('443') }}"
-    trusted_proxies: "{{ networks.trusted.trusted_proxies | d([]) }}"
+    trusted_domains: "{{ nextcloud_trusted_domains | d([]) }}"
+    trusted_proxies: "{{ nextcloud_trusted_proxies | d([]) }}"
     forwarded_for_headers:
       - "HTTP_X_FORWARDED_FOR"
+      # - "X-Forwarded-For"
     jpeg_quality: "60"
     preview_max_x: "2048"
     preview_max_y: "2048"

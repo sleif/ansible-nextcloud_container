@@ -183,7 +183,7 @@
       ansible.builtin.wait_for:
         timeout: 60
       when:
-        - _podman_container_create_changed | bool
+        - _container_create_changed | bool
 
     - name: Get enabled and disabled apps
       ansible.builtin.shell:
