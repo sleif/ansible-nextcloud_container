@@ -31,6 +31,7 @@ nextcloud_config_system:
     jpeg_quality: "60"
     preview_max_x: "2048"
     preview_max_y: "2048"
+    upgrade.disable-web: 'true'
 
 # nexcloud config.php smtp parameters
 nextcloud_config_system_memory_caching:
