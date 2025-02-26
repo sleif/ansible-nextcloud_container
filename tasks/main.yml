@@ -118,7 +118,7 @@
     #   podman_networks.podman_network_root.podman_network_name }}"
     podman_operation: podman_container_create
     container_name: '{{ nextcloud_container_name }}'
-    target: "{{ pod_name if pod_name | d('') is truthy else pihole_container_name }}"
+    target: "{{ pod_name if pod_name | d('') is truthy else container_name }}"
     _container:
       name: '{{ container_name }}'
       image:
