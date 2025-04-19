@@ -106,6 +106,14 @@
         - nextcloud_update_apps
   tags: always
 
+- name: set_fact _build_images
+  ansible.builtin.set_fact:
+    _build_images:
+      - name: "{{ nextcloud_container_image }}"
+        tag: "{{ nextcloud_container_image_tag }}"
+  when:
+    - nextcloud_custom_build_required
+
 - name: include_role sleif.podman podman_operation podman_create_container for mariadb
   ansible.builtin.include_role:
     name: sleif.podman
@@ -124,6 +132,37 @@
       image:
         name: "{{ nextcloud_container_image }}"
         tag: "{{ nextcloud_container_image_tag }}"
+      build_required: "{{ nextcloud_custom_build_required }}"
+      additional_images: "{{ _build_images | default([]) }}"
+      containerfile_content: |-
+        # Start from the official Nextcloud image
+        FROM {{ nextcloud_container_image }}:{{ nextcloud_container_image_tag }}
+
+        # Change Apache to listen on a different port (e.g., 11000)
+        RUN sed -i 's/Listen 80/Listen {{ nextcloud_container_apache_port }}/' /etc/apache2/ports.conf && \
+            sed -i 's/<VirtualHost \*:80>/<VirtualHost \*:{{ nextcloud_container_apache_port }}>/' /etc/apache2/sites-available/000-default.conf && \
+            sed -i 's/<VirtualHost \*:80>/<VirtualHost \*:{{ nextcloud_container_apache_port }}>/' /etc/apache2/sites-available/default-ssl.conf
+
+        # Enable mod_remoteip
+        RUN a2enmod remoteip
+        # Add config for remoteip (trust Caddy)
+        RUN echo 'RemoteIPHeader X-Forwarded-For\nRemoteIPInternalProxy 127.0.0.1{%- if nextcloud_trusted_proxies[0] | d([] is truthy) %}
+        {%- for proxy in nextcloud_trusted_proxies %}
+        \nRemoteIPInternalProxy "{{ proxy }}"
+        {%- endfor %}{% endif %}' > /etc/apache2/conf-available/remoteip.conf && a2enconf remoteip
+
+        # # Adjust Apache log format to log real client IPs
+        # RUN sed -i 's/%h/%a/' /etc/apache2/apache2.conf
+
+        # # Add /debug path and script for inspecting headers
+        # RUN mkdir -p /var/www/debug && \
+        #     echo "<?php header('Content-Type: text/plain'); print_r(apache_request_headers());" > /var/www/debug/headers.php && \
+        #     chmod +x /var/www/debug/headers.php && \
+        #     echo 'Alias /debug /var/www/debug\n<Directory /var/www/debug>\n  Require all granted\n</Directory>' > /etc/apache2/conf-available/debug.conf && \
+        #     a2enconf debug
+
+        ENTRYPOINT ["/entrypoint.sh"]
+        CMD ["apache2-foreground"]
       network: "{{ podman_network_name if pod_name | d('') is falsy else [] }}"
       pod: "{{ pod_name | default(omit) }}"
       stop_timeout: 90
@@ -162,7 +201,7 @@
     #   delay: 10
 
     - name: Wait for nextcloud service comes up (apache version)
-      ansible.builtin.command: podman exec -t {{ nextcloud_container_name }} busybox wget -O - http://localhost/login
+      ansible.builtin.command: podman exec -t {{ nextcloud_container_name }} busybox wget -O - http://localhost:{{ nextcloud_container_apache_port }}/login
       register: _result
       until: _result.rc == 0
       changed_when: _result.rc != 0

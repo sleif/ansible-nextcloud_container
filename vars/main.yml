@@ -24,7 +24,7 @@ nextcloud_config_system:
     # overwriteprotocol: "https"
     overwrite.cli.url: "https://{{ nextcloud_overwritehost }}:{{ nextcloud_overwriteport | d('443') }}"
     trusted_domains: "{{ nextcloud_trusted_domains | d([]) }}"
-    trusted_proxies: "{{ nextcloud_trusted_proxies | d([]) }}"
+    trusted_proxies: "{{ nextcloud_trusted_proxies | d([]) + ['127.0.0.1'] }}"
     forwarded_for_headers:
       - "HTTP_X_FORWARDED_FOR"
       # - "X-Forwarded-For"

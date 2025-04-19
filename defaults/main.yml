@@ -3,7 +3,8 @@
 container_storage_dir_base: '/srv'
 nextcloud_container_image: "docker.io/nextcloud"
 nextcloud_container_image_tag: 'stable'
-nextcloud_container_exposed_port: '80'
+nextcloud_container_apache_port: '80'
+nextcloud_custom_build_required: "{{ false if nextcloud_container_apache_port == '80' else true }}"
 # TODO: what if nginx is not on the same host?
 nginx_storage_dir_base: '/srv'
 
