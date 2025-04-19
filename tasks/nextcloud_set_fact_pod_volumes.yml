@@ -23,4 +23,13 @@
         target: '/var/www/html/themes{{ container_volumes_parameter | d("") }}'
         mode: '0750'
         state: directory
+      # # nextcloud_app-hooks/pre-installation Executed before the Nextcloud is installed/initiated
+      # # nextcloud_app-hooks/post-installation Executed after the Nextcloud is installed/initiated
+      # # nextcloud_app-hooks/pre-upgrade Executed before the Nextcloud is upgraded
+      # # nextcloud_app-hooks/post-upgrade Executed after the Nextcloud is upgraded
+      # # nextcloud_app-hooks/before-starting Executed before the Nextcloud starts
+      # - host: '{{ _container_storage_dir_base ~ "/" ~ container_name ~ "/nextcloud_app-hooks" }}'
+      #   target: '/docker-entrypoint-hooks.d{{ container_volumes_parameter | d("") }}'
+      #   mode: '0750'
+      #   state: directory
   tags: always
