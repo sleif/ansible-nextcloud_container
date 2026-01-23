@@ -116,7 +116,7 @@
           - name: "{{ nextcloud_container_image }}"
             tag: "{{ nextcloud_container_image_tag }}"
 
-    - name: Wait for nextcloud service comes up (fpm version)
+    - name: Create Dockerfile content for image additions
       ansible.builtin.set_fact:
         containerfile_content: |-
           # Start from the official Nextcloud image
