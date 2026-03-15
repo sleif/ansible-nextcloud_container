@@ -281,7 +281,7 @@
     - name: Merge nextcloud_config | system mail
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) | combine({'system': nextcloud_config_system_smtp.system}, recursive=true) }}"
-      when: nextcloud_config_system_smtp.system.mail_smtphost
+      when: nextcloud_config_system_smtp.system.mail_smtphost is truthy
 
     - name: Merge nextcloud_config | apps preview
       ansible.builtin.set_fact:
@@ -297,7 +297,7 @@
       ansible.builtin.set_fact:
         nextcloud_config: "{{ nextcloud_config | default({}) |
                           combine({'apps': {'user_ldap': nextcloud_config_apps_user_ldap.apps.user_ldap}}, recursive=true) }}"
-      when: nextcloud_config_apps_user_ldap.apps.user_ldap.s01ldap_base
+      when: nextcloud_config_apps_user_ldap.apps.user_ldap.s01ldap_base is truthy
 
     - name: Write temporary config file /dev/shm/nextcloud_config_file_for_import
       ansible.builtin.copy:
