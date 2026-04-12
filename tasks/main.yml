@@ -115,6 +115,7 @@
         _build_images:
           - name: "{{ nextcloud_container_image }}"
             tag: "{{ nextcloud_container_image_tag }}"
+            tags_to_remove: "{{ nextcloud_container_image_tags_to_remove | d([]) }}"
 
     - name: Create Dockerfile content for image additions
       ansible.builtin.set_fact:
@@ -167,6 +168,7 @@
       image:
         name: "{{ nextcloud_container_image }}"
         tag: "{{ nextcloud_container_image_tag }}"
+        tags_to_remove: "{{ nextcloud_container_image_tags_to_remove | d([]) }}"
       build_required: "{{ nextcloud_custom_build_required }}"
       additional_images: "{{ _build_images | default([]) }}"
       containerfile_content: "{{ containerfile_content | d(omit) }}"
