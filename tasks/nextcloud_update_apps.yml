@@ -12,17 +12,39 @@
       changed_when: _nextcloud_app_updates.rc != 0
       ignore_errors: true
 
-    - name: Nextcloud_update_apps | list app updates
-      ansible.builtin.debug:
-        var: _nextcloud_app_updates.stdout_lines
-      when:
-        - not _nextcloud_app_updates.failed
-
-    - name: Nextcloud_update_apps | apply app updates
-      ansible.builtin.command:
-        podman exec --user www-data {{ nextcloud_container_name }} php occ app:update --all
-      register: _result
-      changed_when: _result.rc != 0
+    - name: Nextcloud_update_apps | update block
       when:
         - not _nextcloud_app_updates.failed
         - _nextcloud_app_updates.stdout_lines is truthy
+      block:
+        - name: Nextcloud_update_apps | list app updates
+          ansible.builtin.debug:
+            var: _nextcloud_app_updates.stdout_lines
+
+        - name: Nextcloud_update_apps | Gather service facts
+          ansible.builtin.service_facts:
+
+        - name: Nextcloud_update_apps | stop notify_push container
+          ansible.builtin.systemd_service:
+            name: notify_push_for_nextcloud
+            state: stopped
+            scope: "{{ _systemd_scope }}"
+          when:
+            - "'notify_push_for_nextcloud.service' in ansible_facts.services"
+            - _nextcloud_app_updates.stdout_lines | select('search', 'notify_push') | list | length > 0
+
+        - name: Nextcloud_update_apps | apply app updates
+          ansible.builtin.command:
+            podman exec --user www-data {{ nextcloud_container_name }} php occ app:update --all
+          register: _result
+          changed_when: _result.rc != 0
+
+        - name: Nextcloud_update_apps | start notify_push container  # noqa: ignore-errors
+          ansible.builtin.systemd_service:
+            name: notify_push_for_nextcloud
+            state: started
+            scope: "{{ _systemd_scope }}"
+          when:
+            - "'notify_push_for_nextcloud.service' in ansible_facts.services"
+            - _nextcloud_app_updates.stdout_lines | select('search', 'notify_push') | list | length > 0
+          ignore_errors: true
