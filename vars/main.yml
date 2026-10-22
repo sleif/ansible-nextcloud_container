@@ -18,6 +18,7 @@ nextcloud_container_env:
 # nexcloud config.php common parameters
 nextcloud_config_system:
   system:
+    serverid: "{{ 512 | random(seed=nextcloud_overwritehost) }}"
     default_phone_region: "DE"
     loglevel: "{{ nextcloud_loglevel | d(2) }}"
     # overwritehost: "{{ nextcloud_overwritehost }}"
